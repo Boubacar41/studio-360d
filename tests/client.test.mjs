@@ -183,7 +183,8 @@ test('aide : l\'option --nom d\'activer y est décrite', async () => {
 test('charger : {{C360}} remplacé par la commande complète, avec des chemins à espaces', async () => {
   const r = await client(['charger', 'base/essai']);
   assert.equal(r.code, 0);
-  const commande = `node "${versSlash(path.join(plugin, 'client', 'c360.mjs'))}" --data "${versSlash(data)}"`;
+  // Node donne au client son chemin réel : sous macOS, /var est un lien vers /private/var.
+  const commande = `node "${versSlash(path.join(fs.realpathSync(plugin), 'client', 'c360.mjs'))}" --data "${versSlash(data)}"`;
   assert.ok(r.stdout.includes(`Lance ${commande} run modules -- a b`), r.stdout);
   if (process.platform === 'win32') assert.ok(!commande.includes(path.sep));
 });
