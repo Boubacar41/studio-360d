@@ -1,0 +1,31 @@
+# Tests du client c360 sur les trois systèmes, à chaque mise à jour du dépôt.
+# Le serveur de Studio 360D est simulé dans le test (tests/client.test.mjs) : aucun secret ici.
+name: Tests du client
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  client:
+    name: ${{ matrix.os }}, Node ${{ matrix.node }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+        node: ['22', '24']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Tests
+        run: node --test

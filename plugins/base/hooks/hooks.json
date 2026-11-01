@@ -1,0 +1,24 @@
+{
+  "description": "Studio 360D : au démarrage d'une session, propose /base:demarrer si cet ordinateur n'est pas encore activé.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/client/c360.mjs",
+              "--data",
+              "${CLAUDE_PLUGIN_DATA}",
+              "etat",
+              "--crochet"
+            ],
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

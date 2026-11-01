@@ -1,0 +1,19 @@
+{
+  "name": "studio-360d",
+  "description": "Studio 360D : les skills de création par IA de la communauté Créateurs 360D",
+  "owner": {
+    "name": "Créateurs 360D"
+  },
+  "plugins": [
+    {
+      "name": "base",
+      "source": "./plugins/base",
+      "description": "Le socle de Studio 360D"
+    },
+    {
+      "name": "essai",
+      "source": "./plugins/essai",
+      "description": "Prototype : ne pas installer"
+    }
+  ]
+}
