@@ -13,6 +13,13 @@ Studio 360D, qui les sert aux membres actifs de la communauté, au moment où un
 
 Un membre t'a donné l'adresse de ce dépôt et t'a demandé de l'installer. Voici comment faire.
 
+**À lire avant toute action.** Ne clone pas ce dépôt (surtout pas dans le dossier du membre) et
+n'utilise pas `gh` : le membre n'a ni l'un ni l'autre configuré. Pour lire un autre fichier,
+ouvre son adresse brute :
+`https://raw.githubusercontent.com/Boubacar41/studio-360d/main/<chemin>`, par exemple
+`.../main/plugins/base/client/c360.mjs`. Et ne lance aucune commande de vérification (Node,
+Python, ffmpeg) : `/base:demarrer` s'en charge.
+
 **Les règles**
 
 - Commence par la section « Ce que tu dis au membre avant d'installer », puis essaie les deux
@@ -31,10 +38,6 @@ Un membre t'a donné l'adresse de ce dépôt et t'a demandé de l'installer. Voi
 - Avec le membre, parle sans jargon : dis « le catalogue de Studio 360D », « pour toi
   seulement », « ton fichier de réglages de Claude ». Pas de « marketplace », pas de « portée »,
   pas de chemin de fichier, pas de bloc de code ni de nom de commande qu'il n'a pas demandés.
-- **Pour lire un fichier de ce dépôt**, ouvre son adresse brute :
-  `https://raw.githubusercontent.com/Boubacar41/studio-360d/main/<chemin>`, par exemple
-  `.../main/plugins/base/client/c360.mjs`. Le membre n'a ni `gh` ni `git` configuré : ne
-  compte pas sur eux.
 - **Pendant l'installation, ne vérifie pas toi-même Node, Python ni ffmpeg**, et ne dis pas au
   membre qu'il lui en manque un : `/base:demarrer` s'en charge ensuite, avec un diagnostic
   fiable. Sous Windows, `python` peut ouvrir le Microsoft Store alors que Python est installé.
@@ -123,22 +126,40 @@ Le programme de l'application, lui, l'est souvent, par la variable `CLAUDE_CODE_
 
 ### Voie 2 : le menu de l'application
 
-Explique au membre les clics, un à la fois :
+Tu ne vois pas l'écran du membre. Donne-lui ce chemin **en une fois**, avec ces libellés exacts :
+ce sont ceux de l'application en français, relevés à l'essai. **N'invente pas d'autres noms.**
+Si son application est dans une autre langue, les boutons sont aux mêmes places : demande-lui
+ce qu'il voit plutôt que de deviner. « Marketplace » est ici le nom d'un bouton : c'est la seule
+fois où tu peux employer ce mot.
 
-1. Faire connaître le catalogue : taper dans la zone de saisie
-   `/plugin marketplace add https://github.com/Boubacar41/studio-360d`, puis valider.
-2. Le bouton **+** à côté de la zone de saisie, puis **Add plugins** (Ajouter des plugins). Si le
-   menu affiche **Plugins** à la place : **Plugins**, puis **Browse plugins**.
-3. Dans le catalogue **studio-360d**, le plugin **base (pas essai)**, installé pour **ton compte
-   utilisateur** (ni « ce projet », ni « local »).
-4. **Les mises à jour automatiques** : comme à la voie 1, point 3, propose d'ajouter
-   `"autoUpdate": true` à l'entrée `studio-360d` du fichier de réglages, avec son accord.
-5. Passe à « Vérifier l'installation ».
+Commence par lui dire : « Quand tu verras le message "Base est installé et prêt à être utilisé",
+reviens ici et dis-moi "c'est installé" : j'aurai encore une chose à te proposer. »
+
+1. Dans la zone de saisie, tape `/plugin` et valide : la fenêtre **Plugins** des Paramètres
+   s'ouvre. En haut, on voit « Les vôtres », « Découvrir », un champ « Rechercher » et un bouton
+   noir **+ Ajouter**.
+2. Clique **+ Ajouter**, puis **Ajouter une marketplace**.
+3. Choisis **Ajouter depuis un dépôt** (pas « Parcourir les sources Anthropic »).
+4. Un avertissement rappelle de n'ajouter que des catalogues de confiance. Dans le champ
+   **URL**, colle `https://github.com/Boubacar41/studio-360d`, puis clique **Synchro**.
+5. Dans « Les vôtres », deux plugins apparaissent : **Base** et **Essai**. Sur **Base
+   seulement**, clique **Ajouter à cet ordinateur** (le bouton lui-même, pas sa petite flèche).
+   On voit « ✓ Ajouté », puis la notification « Base est installé et prêt à être utilisé ».
+6. Ferme la fenêtre et reviens dans la conversation.
+
+Quand il revient :
+
+7. **Les mises à jour automatiques** : le menu ne les active pas. Propose-les comme à la voie 1,
+   point 3 : relis l'entrée `studio-360d` du fichier de réglages et ajoutes-y
+   `"autoUpdate": true`, avec son accord et en suivant « Avant de toucher au fichier de
+   réglages ».
+8. Passe à « Vérifier l'installation ».
 
 ### Vérifier l'installation
 
-1. Demande au membre de taper `/base` dans la zone de saisie **de cette session-ci** (après la
-   voie 1, le plugin est actif tout de suite) : `/base:demarrer` doit apparaître dans la liste.
+1. Demande au membre de taper `/base` dans la zone de saisie **de cette session-ci** (par les
+   deux voies, le plugin est actif tout de suite) : `/base:demarrer` doit apparaître dans la
+   liste.
 2. Si `/base:demarrer` n'apparaît pas : qu'il ouvre une **nouvelle
    session** (le bouton **+ New** dans la barre latérale, ou Ctrl+N sous Windows, Cmd+N sous
    macOS) et y tape `/base`.
@@ -176,18 +197,17 @@ membre s'y prête, par exemple « enlève l'aspect IA de ce clip ».
 Si le membre te demande de désinstaller Studio 360D, dis-lui d'abord ce que tu vas retirer, puis,
 avec son accord :
 
-1. **Le plugin** :
-   - par la commande, si `claude` ou le programme de l'application répond (voie 1, point 1) :
-     `claude plugin uninstall base@studio-360d`. Elle efface aussi le dossier de données du
-     plugin, sauf si on ajoute `--keep-data` ;
-   - sinon, par le menu : **+** à côté de la zone de saisie, **Plugins**, **Manage plugins**,
-     puis le plugin **base** et **Uninstall**.
-2. **Le catalogue** : `claude plugin marketplace remove studio-360d`. Sans la commande `claude`,
-   retire du fichier de réglages l'entrée `studio-360d` de `extraKnownMarketplaces` et l'entrée
-   `base@studio-360d` de `enabledPlugins`, en suivant « Avant de toucher au fichier de
-   réglages ».
-3. **Le dossier de données**, s'il reste : `~/.claude/plugins/data/base-studio-360d/`. Il
-   contient la clé de cet ordinateur ; efface-le.
+1. **Le plugin**, par la commande (voie 1, point 1, pour trouver `claude` ou le programme de
+   l'application) : `claude plugin uninstall base@studio-360d`. Elle efface aussi le dossier de
+   données du plugin, sauf si on ajoute `--keep-data`.
+2. **Le catalogue** : `claude plugin marketplace remove studio-360d`. Ces deux commandes
+   retirent aussi nos deux entrées du fichier de réglages.
+3. **Ce qui reste** : la commande laisse le dossier `~/.claude/plugins/cache/studio-360d/` ;
+   efface-le. Efface aussi `~/.claude/plugins/data/base-studio-360d/` s'il reste : il contient
+   la clé de cet ordinateur.
+
+   Si aucune commande ne répond, ne retire rien à la main : dis-le au membre et propose-lui
+   d'écrire dans l'Entraide de la communauté.
 4. Dis au membre que cet ordinateur compte encore parmi ses deux ordinateurs activés : pour
    libérer la place, il écrit dans l'Entraide de la communauté.
 5. Demande-lui d'ouvrir une nouvelle session.
