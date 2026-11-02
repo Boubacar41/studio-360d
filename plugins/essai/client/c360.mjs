@@ -27,7 +27,7 @@ import crypto from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-export const VERSION_CLIENT = '0.1.0';
+export const VERSION_CLIENT = '0.1.1';
 export const ID_DONNEES_BASE = 'base-studio-360d';
 /** Version majeure minimale de Node (décision du 1er nov. 2026 : Node 20 n'est plus maintenu). */
 export const NODE_MIN = 22;
@@ -164,6 +164,13 @@ class ErreurReseau extends Error {}
 
 // ------------------------------------------------------------------ messages
 
+// Le skill /base:demarrer de la coque active lui-même l'ordinateur, puis charge sa suite : un
+// message qui renvoie vers lui ne doit pas le faire relancer quand il est déjà ouvert (bug 01).
+const CONSIGNE_ACTIVATION =
+  'Consigne pour Claude : si tu suis déjà le skill /base:demarrer, ne le relance pas : passe à ' +
+  'son étape « Les conditions d\'utilisation », qui mène à l\'activation. Sinon, propose au membre ' +
+  'de lancer le skill /base:demarrer.';
+
 function texteNonActive() {
   return [
     '# Studio 360D n\'est pas encore activé',
@@ -171,7 +178,7 @@ function texteNonActive() {
     'Studio 360D n\'est pas encore activé sur cet ordinateur, alors ce skill ne peut pas se charger.',
     'L\'activation prend deux minutes et ne coûte rien.',
     '',
-    'Consigne pour Claude : propose au membre de lancer le skill /base:demarrer.',
+    CONSIGNE_ACTIVATION,
     'Une fois l\'ordinateur activé, reviens à sa demande de départ.',
   ].join('\n');
 }
@@ -201,7 +208,7 @@ function texteRefus(ctx, donnees) {
   const consignes = {
     adhesion: 'Consigne pour Claude : transmets ce message au membre tel quel, avec le lien.',
     'non-membre': 'Consigne pour Claude : transmets ce message au membre tel quel.',
-    appareil: 'Consigne pour Claude : propose au membre de lancer le skill /base:demarrer pour réactiver cet ordinateur.',
+    appareil: `${CONSIGNE_ACTIVATION} La clé de cet ordinateur ne servait plus : le studio l'a effacée.`,
   };
   return [
     `# Studio 360D : ${titres[raison] || 'demande refusée'}`,
@@ -267,6 +274,17 @@ async function obtenirJeton(ctx, compte, forcer = false) {
 
 /** GET avec le jeton court, renouvelé une fois sans bruit s'il a expiré. */
 async function demanderAvecJeton(ctx, compte, chemin) {
+  const r = await demanderAvecJetonBrut(ctx, compte, chemin);
+  // Ordinateur retiré par l'administration (ou clé inconnue du serveur) : la clé ne servira plus.
+  // On l'efface, pour que le crochet, le diagnostic et /base:demarrer voient un ordinateur non
+  // activé et passent par l'activation, au lieu de redemander la même chose en boucle.
+  if (r.statut === 401 && r.donnees.raison === 'appareil') {
+    for (const f of ['compte.json', 'jeton.json']) fs.rmSync(fichier(ctx, f), { force: true });
+  }
+  return r;
+}
+
+async function demanderAvecJetonBrut(ctx, compte, chemin) {
   let t = await obtenirJeton(ctx, compte);
   if (t.refus) return t.refus;
   let r = await appeler(ctx, 'GET', chemin, { jeton: t.jeton });

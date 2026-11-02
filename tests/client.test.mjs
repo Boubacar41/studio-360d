@@ -252,6 +252,27 @@ test('adhésion inactive : charger donne le message de départ (code 0), run ref
   etat.actif = true;
 });
 
+test('ordinateur retiré : la clé périmée est effacée, et le message ne fait pas relancer /base:demarrer', async () => {
+  const retire = path.join(tmp, 'ordinateur retiré');
+  fs.mkdirSync(retire, { recursive: true });
+  fs.writeFileSync(path.join(retire, 'compte.json'), JSON.stringify({ version: 1, email: EMAIL, cle: 'c360_cle_retiree', active_le: '2026-11-01T10:00:00Z' }));
+  const r = await client(['charger', 'base/essai'], { donnees: retire });
+  assert.equal(r.code, 0);
+  assert.match(r.stdout, /n'est plus activé/);
+  assert.match(r.stdout, /ne le relance pas/);
+  assert.ok(!fs.existsSync(path.join(retire, 'compte.json')), 'clé périmée effacée');
+  assert.match((await client(['diagnostic'], { donnees: retire })).stdout, /Activé sur cet ordinateur : non/);
+});
+
+test('skill demarrer : Node, état, conditions et activation dans la coque, puis la suite chargée du serveur', { skip: !fs.existsSync(path.join(SOURCE, 'skills', 'demarrer', 'SKILL.md')) }, () => {
+  const t = fs.readFileSync(path.join(SOURCE, 'skills', 'demarrer', 'SKILL.md'), 'utf8');
+  const etapes = ['node --version', '" diagnostic', '" conditions', '" activer --email <adresse>','--accepte-conditions', '" charger base/demarrer'];
+  const i = etapes.map((e) => t.indexOf(e));
+  assert.ok(i.every((x) => x >= 0), JSON.stringify(i));
+  assert.deepEqual([...i].sort((a, b) => a - b), i, 'dans cet ordre');
+  assert.doesNotMatch(t, /^!`/m, 'pas de ligne ! : Node peut manquer');
+});
+
 test('serveur injoignable : charger répond clairement, code 0', async () => {
   const coupe = path.join(tmp, 'plugins', 'coupe');
   installerPlugin(coupe, 'http://127.0.0.1:9');

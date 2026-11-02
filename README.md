@@ -15,19 +15,32 @@ Un membre t'a donné l'adresse de ce dépôt et t'a demandé de l'installer. Voi
 
 **Les règles**
 
-- Commence par la section « Ce que tu dis au membre avant d'installer », puis essaie les trois
+- Commence par la section « Ce que tu dis au membre avant d'installer », puis essaie les deux
   voies **dans l'ordre**.
-- Passe à la voie suivante quand une commande est **absente, trop ancienne ou en erreur**. Dans
-  ce dernier cas, montre l'erreur au membre avant de passer à la suite.
+- Passe à la voie 2 quand une commande de la voie 1 est **absente ou en erreur**. Dans ce
+  dernier cas, montre l'erreur au membre avant de passer à la suite.
 - **Si le membre refuse une étape, ne change pas de voie de toi-même.** Demande-lui s'il préfère
-  faire lui-même les clics de la voie 3, ou s'arrêter là.
+  faire lui-même les clics de la voie 2, ou s'arrêter là.
+- N'invente pas d'autre voie, par exemple en écrivant toi-même le catalogue et le plugin dans le
+  fichier de réglages : à l'essai, Claude Code a commencé le téléchargement puis s'est arrêté
+  sans aucun message, et le plugin n'est jamais arrivé.
 - **Avant chaque modification, dis au membre ce que tu vas changer et pourquoi, et attends son
   accord.**
 - Installe seulement le plugin `base`. Le plugin `essai` reste dans le catalogue pour un essai
   technique : ne l'installe pas, sauf si le membre te le demande en le nommant.
 - Avec le membre, parle sans jargon : dis « le catalogue de Studio 360D », « pour toi
   seulement », « ton fichier de réglages de Claude ». Pas de « marketplace », pas de « portée »,
-  pas de chemin de fichier qu'il n'a pas demandé.
+  pas de chemin de fichier, pas de bloc de code ni de nom de commande qu'il n'a pas demandés.
+- **Pour lire un fichier de ce dépôt**, ouvre son adresse brute :
+  `https://raw.githubusercontent.com/Boubacar41/studio-360d/main/<chemin>`, par exemple
+  `.../main/plugins/base/client/c360.mjs`. Le membre n'a ni `gh` ni `git` configuré : ne
+  compte pas sur eux.
+- **Pendant l'installation, ne vérifie pas toi-même Node, Python ni ffmpeg**, et ne dis pas au
+  membre qu'il lui en manque un : `/base:demarrer` s'en charge ensuite, avec un diagnostic
+  fiable. Sous Windows, `python` peut ouvrir le Microsoft Store alors que Python est installé.
+- **Ne fouille pas l'ordinateur** (variables d'environnement, processus, clés SSH) au-delà de ce
+  que décrit ce document. Si les deux voies échouent, dis-le au membre simplement et propose-lui
+  d'écrire dans l'Entraide de la communauté, avec les messages d'erreur.
 
 ### Ce que tu dis au membre avant d'installer
 
@@ -52,96 +65,93 @@ Résume-lui ces points avec tes mots, simplement, puis demande-lui s'il veut con
 
 ### Avant de toucher au fichier de réglages
 
-Les voies 2 et 3, et la fin de la voie 1, modifient le fichier de réglages de l'utilisateur,
-`~/.claude/settings.json` (dans le dossier `.claude` de son dossier personnel, sous Windows comme
-ailleurs). Chaque fois :
+La fin des deux voies (les mises à jour automatiques) modifie le fichier de réglages de
+l'utilisateur, `~/.claude/settings.json` (dans le dossier `.claude` de son dossier personnel, sous
+Windows comme ailleurs). Chaque fois :
 
 1. Lis le fichier. **S'il n'est pas un JSON valide, ne le modifie pas** : montre le problème au
-   membre et propose-lui la voie 3.
+   membre ; le plugin marche quand même, sans mises à jour automatiques.
 2. Fais d'abord une copie à côté : `settings.json.avant-studio-360d`. Si une copie de ce nom
    existe déjà, garde-la et ajoute la date au nom de la nouvelle.
-3. Ajoute les clés **sans rien retirer** : garde toutes ses autres clés, et ajoute nos entrées à
-   côté de celles qui existent déjà dans `extraKnownMarketplaces` et `enabledPlugins`. Si le
-   fichier n'existe pas, crée-le avec ce seul contenu.
-4. Claude Code affichera une demande de confirmation, parce que ce fichier règle l'application.
-   Explique au membre qu'il l'accepte s'il est d'accord avec le changement que tu lui as montré.
+3. Change seulement ce qui est dit **sans rien retirer** : garde toutes ses autres clés et
+   toutes les autres entrées de `extraKnownMarketplaces`.
+4. Selon le mode d'autorisations de l'application, Claude Code affiche ou non une demande de
+   confirmation pour ce fichier : en mode Auto, souvent aucune. Ne l'annonce donc pas comme
+   certaine. L'accord qui compte est celui que tu as demandé au membre ; si une demande
+   s'affiche, dis-lui qu'il l'accepte s'il est d'accord avec le changement que tu lui as
+   décrit.
 
 Ne touche jamais aux réglages du projet (le dossier `.claude` du dossier de travail).
 
-### Voie 1 : la commande `claude`
+### Voie 1 : la commande `claude`, ou le programme de l'application
 
-1. Lance `claude --version`. Si la commande est absente ou en erreur, passe à la voie 2.
-2. Lance `claude plugin install --help` et regarde si l'option `--marketplace` existe (elle
-   arrive avec Claude Code 2.1.292).
-   - **Si elle existe**, dis au membre : « Je vais installer le plugin base de Studio 360D,
-     depuis le dépôt GitHub Boubacar41/studio-360d, pour toi seulement. » Avec son accord :
-     ```
-     claude plugin install base --marketplace Boubacar41/studio-360d
-     ```
-   - **Sinon**, la même installation en deux temps, avec son accord :
-     ```
-     claude plugin marketplace add Boubacar41/studio-360d
-     claude plugin install base@studio-360d --scope user
-     ```
-   Si une commande échoue, montre l'erreur au membre et passe à la voie 2.
+Dans l'onglet Code de l'application, la commande `claude` n'est en général **pas** disponible.
+Le programme de l'application, lui, l'est souvent, par la variable `CLAUDE_CODE_EXECPATH`.
+
+1. Trouve le programme à utiliser, dans cet ordre :
+   - `claude --version` ;
+   - sinon, le programme de l'application : `"$CLAUDE_CODE_EXECPATH" --version` (outil Bash) ou
+     `& $env:CLAUDE_CODE_EXECPATH --version` (outil PowerShell).
+
+   Si aucun ne répond (variable vide, commande absente ou en erreur), passe à la voie 2. Dans la
+   suite, `claude` désigne celui qui a répondu : remplace-le par `"$CLAUDE_CODE_EXECPATH"` ou
+   `& $env:CLAUDE_CODE_EXECPATH` s'il le faut.
+2. Dis au membre : « Je vais installer le plugin base de Studio 360D, depuis le dépôt GitHub
+   Boubacar41/studio-360d, pour toi seulement. » Avec son accord, lance ces deux commandes :
+   ```
+   claude plugin marketplace add https://github.com/Boubacar41/studio-360d
+   claude plugin install base@studio-360d --scope user
+   ```
+   L'adresse complète, en `https://`, est voulue : avec la forme courte `Boubacar41/studio-360d`,
+   Claude Code passe par SSH quand l'ordinateur a une clé GitHub, et les mises à jour peuvent
+   échouer chez qui n'en a pas. Si une commande échoue, montre l'erreur au membre et passe à la
+   voie 2.
 3. **Les mises à jour automatiques.** Pour un catalogue comme celui-ci, Claude Code les laisse
-   désactivées. La commande a ajouté l'entrée `studio-360d` dans `extraKnownMarketplaces` du
-   fichier de réglages : propose au membre d'y ajouter `"autoUpdate": true`, en suivant
-   « Avant de toucher au fichier de réglages ». Rappelle-lui ce que ça veut dire : le contenu
-   du plugin pourra changer sans nouvelle demande. Si l'entrée est absente, ajoute-la en entier,
-   comme à la voie 2.
-4. Passe à « Vérifier l'installation ».
-
-### Voie 2 : les réglages de l'utilisateur
-
-1. Montre au membre ce que tu vas ajouter à son fichier de réglages de Claude :
+   désactivées, et la commande réécrit l'entrée `studio-360d` de `extraKnownMarketplaces` dans
+   le fichier de réglages : un `"autoUpdate": true` déjà présent **disparaît**. Relis donc
+   l'entrée après les commandes et propose au membre d'y ajouter `"autoUpdate": true`, en
+   suivant « Avant de toucher au fichier de réglages » et en gardant la source telle que la
+   commande l'a écrite. Rappelle-lui ce que ça veut dire : le contenu du plugin pourra changer
+   sans nouvelle demande. Si l'entrée est absente, ajoute-la en entier :
    ```json
-   {
-     "extraKnownMarketplaces": {
-       "studio-360d": {
-         "source": { "source": "github", "repo": "Boubacar41/studio-360d" },
-         "autoUpdate": true
-       }
-     },
-     "enabledPlugins": { "base@studio-360d": true }
+   "studio-360d": {
+     "source": { "source": "git", "url": "https://github.com/Boubacar41/studio-360d.git" },
+     "autoUpdate": true
    }
    ```
-   Explique-lui en deux phrases : la première partie fait connaître à Claude le catalogue de
-   Studio 360D et active ses mises à jour automatiques (le contenu du plugin pourra changer sans
-   nouvelle demande) ; la seconde active le plugin « base ».
-2. Avec son accord, ajoute ces clés en suivant « Avant de toucher au fichier de réglages ».
-3. Passe à « Vérifier l'installation ». Avec cette voie, Claude Code télécharge le catalogue et
-   le plugin en arrière-plan, au début de la session suivante.
+4. Passe à « Vérifier l'installation ».
 
-### Voie 3 : le menu de l'application
+### Voie 2 : le menu de l'application
 
 Explique au membre les clics, un à la fois :
 
-1. Le bouton **+** à côté de la zone de saisie, puis **Add plugins** (Ajouter des plugins). Si le
+1. Faire connaître le catalogue : taper dans la zone de saisie
+   `/plugin marketplace add https://github.com/Boubacar41/studio-360d`, puis valider.
+2. Le bouton **+** à côté de la zone de saisie, puis **Add plugins** (Ajouter des plugins). Si le
    menu affiche **Plugins** à la place : **Plugins**, puis **Browse plugins**.
-2. Dans le catalogue **studio-360d**, le plugin **base (pas essai)**, installé pour **ton compte
+3. Dans le catalogue **studio-360d**, le plugin **base (pas essai)**, installé pour **ton compte
    utilisateur** (ni « ce projet », ni « local »).
-3. Si le catalogue **studio-360d** n'apparaît pas : taper dans la zone de saisie
-   `/plugin marketplace add Boubacar41/studio-360d`, valider, puis reprendre au point 1.
 4. **Les mises à jour automatiques** : comme à la voie 1, point 3, propose d'ajouter
    `"autoUpdate": true` à l'entrée `studio-360d` du fichier de réglages, avec son accord.
 5. Passe à « Vérifier l'installation ».
 
 ### Vérifier l'installation
 
-1. Demande au membre d'ouvrir une **nouvelle session** : le bouton **+ New** dans la barre
-   latérale, ou Ctrl+N sous Windows, Cmd+N sous macOS.
-2. Dans la nouvelle session, qu'il tape `/base` dans la zone de saisie : `/base:demarrer` doit
-   apparaître dans la liste.
-3. S'il n'apparaît pas : attendre une minute, fermer cette session et en ouvrir une autre, puis
-   taper de nouveau `/base`.
+1. Demande au membre de taper `/base` dans la zone de saisie **de cette session-ci** (après la
+   voie 1, le plugin est actif tout de suite) : `/base:demarrer` doit apparaître dans la liste.
+2. Si `/base:demarrer` n'apparaît pas : qu'il ouvre une **nouvelle
+   session** (le bouton **+ New** dans la barre latérale, ou Ctrl+N sous Windows, Cmd+N sous
+   macOS) et y tape `/base`.
+3. S'il n'apparaît toujours pas : attendre une minute, fermer cette session et en ouvrir une
+   autre, puis taper de nouveau `/base`.
 4. Ensuite, il lance `/base:demarrer`.
 
 ### Après l'installation
 
-`/base:demarrer` vérifie Node (22 ou plus), Python (3.10 ou plus) et ffmpeg, et les installe avec
-l'accord du membre, une étape à la fois. Il active l'ordinateur avec un code reçu par e-mail, puis
-fait un premier essai gratuit. Ensuite, les skills s'ouvrent d'eux-mêmes quand la demande du
+`/base:demarrer` vérifie Node (22 ou plus) et l'installe au besoin. Il présente les conditions
+d'utilisation et active l'ordinateur avec un code reçu par e-mail. Ensuite seulement, il vérifie
+Python (3.10 ou plus) et ffmpeg, les installe avec l'accord du membre, une étape à la fois, et
+fait un premier essai gratuit. Après quoi, les skills s'ouvrent d'eux-mêmes quand la demande du
 membre s'y prête, par exemple « enlève l'aspect IA de ce clip ».
 
 ### Ce que fait le client `c360`
@@ -157,7 +167,9 @@ membre s'y prête, par exemple « enlève l'aspect IA de ce clip ».
   système, la clé d'appareil, et le nom de chaque skill ou outil demandé. Le serveur tient le
   journal de ces chargements. Jamais les fichiers ni les créations du membre.
 - **Il garde** la clé d'appareil dans le dossier de données du plugin,
-  `~/.claude/plugins/data/base-studio-360d/`.
+  `~/.claude/plugins/data/base-studio-360d/`. Si le serveur ne reconnaît plus l'ordinateur
+  (retiré de la liste des ordinateurs du membre), il efface cette clé : `/base:demarrer` peut
+  alors le réactiver.
 
 ### Désinstaller
 
@@ -165,8 +177,9 @@ Si le membre te demande de désinstaller Studio 360D, dis-lui d'abord ce que tu 
 avec son accord :
 
 1. **Le plugin** :
-   - par la commande, si `claude` répond : `claude plugin uninstall base@studio-360d`. Elle
-     efface aussi le dossier de données du plugin, sauf si on ajoute `--keep-data` ;
+   - par la commande, si `claude` ou le programme de l'application répond (voie 1, point 1) :
+     `claude plugin uninstall base@studio-360d`. Elle efface aussi le dossier de données du
+     plugin, sauf si on ajoute `--keep-data` ;
    - sinon, par le menu : **+** à côté de la zone de saisie, **Plugins**, **Manage plugins**,
      puis le plugin **base** et **Uninstall**.
 2. **Le catalogue** : `claude plugin marketplace remove studio-360d`. Sans la commande `claude`,
@@ -199,8 +212,9 @@ Dans l'onglet Code, écris à Claude :
 > Installe Studio 360D : https://github.com/Boubacar41/studio-360d
 
 Claude te dit ce qui sera installé et ce qu'il va changer, et te demande ton accord. Ensuite,
-ouvre une nouvelle session (**+ New**, ou Ctrl+N sous Windows, Cmd+N sous macOS) et tape
-`/base:demarrer`. Le premier lancement prend quelques minutes.
+tape `/base:demarrer`. S'il n'apparaît pas quand tu tapes `/base`, ouvre une nouvelle session
+(**+ New**, ou Ctrl+N sous Windows, Cmd+N sous macOS) et réessaie. Le premier lancement prend
+quelques minutes.
 
 **Ce qui reste chez toi**
 
