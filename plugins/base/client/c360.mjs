@@ -27,7 +27,7 @@ import crypto from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-export const VERSION_CLIENT = '0.1.2';
+export const VERSION_CLIENT = '0.1.3';
 export const ID_DONNEES_BASE = 'base-studio-360d';
 /** Version majeure minimale de Node (décision du 1er nov. 2026 : Node 20 n'est plus maintenu). */
 export const NODE_MIN = 22;
@@ -458,7 +458,9 @@ async function cmdActiver(ctx, o) {
   }
   try {
     if (!o.code || o.code === true) {
-      const r = await appeler(ctx, 'POST', '/api/activer', { corps: { email } });
+      // Le nom et le système dès la demande : le serveur refuse un troisième ordinateur avant
+      // d'envoyer un code qui ne servirait pas.
+      const r = await appeler(ctx, 'POST', '/api/activer', { corps: { email, nom, systeme: process.platform } });
       ctx.ecrire(`${r.donnees.message || `Réponse du serveur : HTTP ${r.statut}`}\n`);
       if (r.statut === 200) {
         const suite = o.nom !== undefined ? ` --nom "${nom}"` : '';

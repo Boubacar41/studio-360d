@@ -9,11 +9,6 @@
       "name": "base",
       "source": "./plugins/base",
       "description": "Le socle de Studio 360D"
-    },
-    {
-      "name": "essai",
-      "source": "./plugins/essai",
-      "description": "Prototype : ne pas installer"
     }
   ]
 }

@@ -33,8 +33,7 @@ Python, ffmpeg) : `/base:demarrer` s'en charge.
   sans aucun message, et le plugin n'est jamais arrivé.
 - **Avant chaque modification, dis au membre ce que tu vas changer et pourquoi, et attends son
   accord.**
-- Installe seulement le plugin `base`. Le plugin `essai` reste dans le catalogue pour un essai
-  technique : ne l'installe pas, sauf si le membre te le demande en le nommant.
+- Installe seulement le plugin `base`.
 - Avec le membre, parle sans jargon : dis « le catalogue de Studio 360D », « pour toi
   seulement », « ton fichier de réglages de Claude ». Pas de « marketplace », pas de « portée »,
   pas de chemin de fichier, pas de bloc de code ni de nom de commande qu'il n'a pas demandés.
@@ -142,8 +141,8 @@ reviens ici et dis-moi "c'est installé" : j'aurai encore une chose à te propos
 3. Choisis **Ajouter depuis un dépôt** (pas « Parcourir les sources Anthropic »).
 4. Un avertissement rappelle de n'ajouter que des catalogues de confiance. Dans le champ
    **URL**, colle `https://github.com/Boubacar41/studio-360d`, puis clique **Synchro**.
-5. L'onglet **Découvrir** s'affiche, limité au catalogue studio-360d : deux plugins
-   apparaissent, **Base** et **Essai**. Sur **Base seulement**, clique
+5. L'onglet **Découvrir** s'affiche, limité au catalogue studio-360d : le plugin **Base**
+   apparaît. Sur **Base**, clique
    **Ajouter à cet ordinateur** (le bouton lui-même, pas sa petite flèche). On voit
    « ✓ Ajouté », puis la notification « Base est installé et prêt à être utilisé ».
 6. Ferme la fenêtre et reviens dans la conversation.
