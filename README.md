@@ -142,10 +142,15 @@ reviens ici et dis-moi "c'est installé" : j'aurai encore une chose à te propos
 3. Choisis **Ajouter depuis un dépôt** (pas « Parcourir les sources Anthropic »).
 4. Un avertissement rappelle de n'ajouter que des catalogues de confiance. Dans le champ
    **URL**, colle `https://github.com/Boubacar41/studio-360d`, puis clique **Synchro**.
-5. Dans « Les vôtres », deux plugins apparaissent : **Base** et **Essai**. Sur **Base
-   seulement**, clique **Ajouter à cet ordinateur** (le bouton lui-même, pas sa petite flèche).
-   On voit « ✓ Ajouté », puis la notification « Base est installé et prêt à être utilisé ».
+5. L'onglet **Découvrir** s'affiche, limité au catalogue studio-360d : deux plugins
+   apparaissent, **Base** et **Essai**. Sur **Base seulement**, clique
+   **Ajouter à cet ordinateur** (le bouton lui-même, pas sa petite flèche). On voit
+   « ✓ Ajouté », puis la notification « Base est installé et prêt à être utilisé ».
 6. Ferme la fenêtre et reviens dans la conversation.
+
+Si la fenêtre a été fermée avant ce clic sur Base : `/plugin`, onglet
+**Découvrir**, icône de filtre, sous « Source » choisis **studio-360d**, puis reprends au point 5.
+Base n'apparaît pas dans « Les vôtres » tant qu'il n'est pas installé.
 
 Quand il revient :
 

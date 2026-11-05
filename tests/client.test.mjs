@@ -286,6 +286,7 @@ test('crochet de démarrage : JSON SessionStart si l\'ordinateur n\'est pas acti
   const r = await client(['etat', '--crochet'], { donnees: path.join(tmp, 'vierge') });
   assert.equal(r.code, 0);
   assert.equal(JSON.parse(r.stdout).hookSpecificOutput.hookEventName, 'SessionStart');
+  assert.match(JSON.parse(r.stdout).hookSpecificOutput.additionalContext, /Tutoie le membre/);
 });
 
 test('Node 22 au minimum : avec Node 20, charger le dit (code 0), run refuse (code 5)', async () => {

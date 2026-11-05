@@ -27,7 +27,7 @@ import crypto from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-export const VERSION_CLIENT = '0.1.1';
+export const VERSION_CLIENT = '0.1.2';
 export const ID_DONNEES_BASE = 'base-studio-360d';
 /** Version majeure minimale de Node (décision du 1er nov. 2026 : Node 20 n'est plus maintenu). */
 export const NODE_MIN = 22;
@@ -534,12 +534,12 @@ async function cmdEtat(ctx, o) {
       contexte =
         `Studio 360D demande Node ${NODE_MIN} ou plus, et cet ordinateur a Node ${ctx.versionNode}${source}. ` +
         'Au début de l\'échange, propose au membre de lancer /base:demarrer, qui met Node à jour. ' +
-        'S\'il demande autre chose, réponds d\'abord à sa demande.';
+        'S\'il demande autre chose, réponds d\'abord à sa demande. Tutoie le membre.';
     } else if (!compte) {
       contexte =
         `Studio 360D est installé mais pas encore activé sur cet ordinateur${source}. ` +
         'Au début de l\'échange, propose au membre de lancer /base:demarrer : deux minutes, gratuit. ' +
-        'S\'il demande autre chose, réponds d\'abord à sa demande.';
+        'S\'il demande autre chose, réponds d\'abord à sa demande. Tutoie le membre.';
     }
     if (contexte) {
       ctx.ecrire(`${JSON.stringify({ hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: contexte } })}\n`);

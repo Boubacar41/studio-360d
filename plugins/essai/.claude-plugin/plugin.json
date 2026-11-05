@@ -1,6 +1,6 @@
 {
   "name": "essai",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Prototype de Studio 360D, pour éprouver les voies de repli (PowerShell, outil MCP, réglages du plugin). Ne pas installer.",
   "author": {
     "name": "Créateurs 360D"

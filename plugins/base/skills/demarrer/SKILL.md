@@ -64,7 +64,8 @@ Le rapport parle aussi de Python et de ffmpeg : la suite s'en occupe, n'en parle
 ## 4. Activer l'ordinateur
 
 1. Demande l'adresse e-mail de son compte Skool, celle qu'il utilise pour la communauté
-   Créateurs 360D.
+   Créateurs 360D. Ne propose aucune adresse toi-même, pas même celle de son compte Claude :
+   attends qu'il te la donne.
 2. Lance cette commande, avec son adresse à la place de `<adresse>`. Le studio envoie un code
    à six chiffres à cette adresse.
 
