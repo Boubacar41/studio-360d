@@ -12,14 +12,17 @@
 //                                   (--nom : le nom envoyé au serveur à la place du nom d'hôte,
 //                                   1 à 60 caractères ; sert à simuler un autre ordinateur à l'essai)
 //   conditions                      affiche les conditions d'utilisation et leur version
-//   charger <plugin/skill>          affiche la procédure (sort TOUJOURS avec le code 0)
-//   run <outil> [-- arguments]      reçoit le script, le lance avec Python, puis efface son dossier
+//   charger <plugin/skill>[/etape]  affiche la procédure ou la référence (sort TOUJOURS avec le code 0)
+//   run <outil> [-- arguments]      reçoit un programme Python ou Node, le lance depuis le dossier
+//                                   courant avec l'environnement du studio, puis efface sa copie
 //   nettoyer                        efface les dossiers d'exécution orphelins
 //   diagnostic                      rapport de panne à coller dans l'Entraide (ni clé, ni jeton, ni e-mail)
 //
-// Fichiers, dans le dossier de données du plugin (--data, sinon CLAUDE_PLUGIN_DATA, sinon
-// ~/.claude/plugins/data/base-studio-360d) : compte.json (clé d'appareil), jeton.json (jeton
-// court), derniere-erreur.json, exec/ (dossiers d'exécution, effacés après chaque run).
+// Fichiers, dans le dossier de données (--data, sinon CLAUDE_PLUGIN_DATA, sinon
+// ~/.claude/plugins/data/base-studio-360d ; celui d'un pack est ramené au dossier voisin de base) :
+// compte.json (clé d'appareil), jeton.json (jeton court), derniere-erreur.json, environnement.json,
+// venv/, ffmpeg/, node_modules/ et ms-playwright/ (posés par l'outil environnement), exec/ (dossiers
+// d'exécution, effacés après chaque run).
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -27,8 +30,16 @@ import crypto from 'node:crypto';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-export const VERSION_CLIENT = '0.1.3';
+export const VERSION_CLIENT = '0.2.0';
 export const ID_DONNEES_BASE = 'base-studio-360d';
+/** Le plugin qui porte le compte et l'environnement : les autres packs prennent son dossier de données. */
+const PLUGIN_SOCLE = 'base';
+/** Le seul outil que le client nomme : il pose l'environnement, il se lance donc sans le contrôler. */
+const OUTIL_ENVIRONNEMENT = 'environnement';
+/** Le nom du catalogue dans les réglages de Claude Code (ligne « Mises à jour automatiques »). */
+const CATALOGUE = 'studio-360d';
+/** Longueur maximale du dossier de données sous Windows (mesure V7 : chemins posés par l'environnement). */
+export const LONGUEUR_DONNEES_MAX = 115;
 /** Version majeure minimale de Node (décision du 1er nov. 2026 : Node 20 n'est plus maintenu). */
 export const NODE_MIN = 22;
 const ICI = path.dirname(fileURLToPath(import.meta.url));
@@ -54,11 +65,41 @@ export function nodeAssezRecent(version = process.versions.node) {
   return Number(String(version).replace(/^v/, '').split('.')[0]) >= NODE_MIN;
 }
 
-export function creerContexte({ dossierClient = ICI, dossierDonnees, fetch = globalThis.fetch, ecrire, ecrireErreur, horloge = Date.now, versionNode = process.versions.node } = {}) {
+/**
+ * Un dossier sous sa forme absolue et native : un skill donne des barres obliques, le crochet des
+ * barres inverses ; la barre finale part et, sous Windows, la lettre du lecteur passe en majuscule.
+ */
+export function normaliserDossier(dossier) {
+  const p = path.resolve(String(dossier));
+  return process.platform === 'win32' ? p.replace(/^[a-z]:/, (lecteur) => lecteur.toUpperCase()) : p;
+}
+
+/**
+ * Règle des packs (spec §4.6) : un pack n'a ni compte ni environnement. Quand le plugin qui porte ce
+ * client (nom lu dans son plugin.json) n'est pas base et que le dossier de données s'appelle
+ * <plugin>-<suffixe>, le client prend le dossier voisin base-<suffixe> : images-studio-360d donne
+ * base-studio-360d, images-inline donne base-inline. Un plugin.json absent ou illisible ne change rien.
+ */
+export function dossierDuSocle(dossierClient, donnees) {
+  const manifeste = lireJSONFichier(path.join(path.dirname(dossierClient), '.claude-plugin', 'plugin.json'));
+  const plugin = manifeste && typeof manifeste.name === 'string' ? manifeste.name : '';
+  const nom = path.basename(donnees);
+  if (!plugin || plugin === PLUGIN_SOCLE || !nom.startsWith(`${plugin}-`) || nom.length === plugin.length + 1) return donnees;
+  return path.join(path.dirname(donnees), `${PLUGIN_SOCLE}-${nom.slice(plugin.length + 1)}`);
+}
+
+/**
+ * @param {object} [options]
+ * @param {string} [options.commande] remplace la commande du client dans C360_COMMANDE et dans les
+ *   consignes (outils/lancer_outil.mjs de la fabrique, qui lance les outils sans serveur)
+ */
+export function creerContexte({ dossierClient = ICI, dossierDonnees, commande, fetch = globalThis.fetch, ecrire, ecrireErreur, horloge = Date.now, versionNode = process.versions.node } = {}) {
+  const donnees = normaliserDossier(dossierDonnees || process.env.CLAUDE_PLUGIN_DATA || dossierDonneesParDefaut());
   return {
     versionNode,
     dossierClient,
-    donnees: path.resolve(dossierDonnees || process.env.CLAUDE_PLUGIN_DATA || dossierDonneesParDefaut()),
+    donnees: dossierDuSocle(dossierClient, donnees),
+    commande: typeof commande === 'string' && commande ? commande : null,
     fetch,
     horloge,
     ecrire: ecrire || ((t) => process.stdout.write(t)),
@@ -66,8 +107,9 @@ export function creerContexte({ dossierClient = ICI, dossierDonnees, fetch = glo
   };
 }
 
-/** La commande complète, telle que Claude doit la lancer. */
+/** La commande complète, telle que Claude doit la lancer (ou celle donnée par ctx.commande). */
 export function commandeC360(ctx) {
+  if (ctx.commande) return ctx.commande;
   return `node "${versSlash(path.join(ctx.dossierClient, 'c360.mjs'))}" --data "${versSlash(ctx.donnees)}"`;
 }
 
@@ -102,6 +144,13 @@ function ecrireJSONFichier(p, objet, prive = false) {
 function lireCompte(ctx) {
   const c = lireJSONFichier(fichier(ctx, 'compte.json'));
   return c && typeof c.cle === 'string' && c.cle ? c : null;
+}
+
+/** Le jour d'un instant ISO à l'heure de cet ordinateur (AAAA-MM-JJ), pas en temps universel. */
+function jourLocal(iso) {
+  const instant = new Date(iso);
+  if (Number.isNaN(instant.getTime())) return String(iso || '').slice(0, 10);
+  return new Date(instant.getTime() - instant.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
 }
 
 function racinePlugin(ctx) {
@@ -176,7 +225,7 @@ function texteNonActive() {
     '# Studio 360D n\'est pas encore activé',
     '',
     'Studio 360D n\'est pas encore activé sur cet ordinateur, alors ce skill ne peut pas se charger.',
-    'L\'activation prend deux minutes et ne coûte rien.',
+    'L\'activation prend deux minutes.',
     '',
     CONSIGNE_ACTIVATION,
     'Une fois l\'ordinateur activé, reviens à sa demande de départ.',
@@ -224,10 +273,17 @@ function texteNodeAncien(ctx) {
     '# Studio 360D : Node est trop ancien',
     '',
     `Studio 360D demande Node ${NODE_MIN} ou plus, et cet ordinateur a Node ${ctx.versionNode}.`,
-    'La mise à jour prend quelques minutes et ne coûte rien.',
+    'La mise à jour prend quelques minutes.',
     '',
     'Consigne pour Claude : propose au membre de lancer le skill /base:demarrer, qui met Node à jour.',
   ].join('\n');
+}
+
+/** Code 6 (spec §5.1, point 2) : l'environnement du studio manque ou n'a pas l'empreinte servie. */
+function texteEnvironnementAPoser(ctx) {
+  const c = `${commandeC360(ctx)} run ${OUTIL_ENVIRONNEMENT} --`;
+  return 'L\'environnement du studio doit être installé ou mis à jour. Consigne pour Claude : annonce au membre ce qui ' +
+    `sera installé (liste, place, licences : \`${c} annoncer\`), attends son accord, puis lance \`${c} installer\`.`;
 }
 
 // ------------------------------------------------------------------ appels au serveur
@@ -361,16 +417,17 @@ function lireVersion(texte) {
 
 /**
  * Trouve un Python assez récent : celui de DATA/venv, puis python3, python et (sous Windows) py -3.
+ * Sert au diagnostic (et aux venv d'essai des tests) : un outil Python, lui, ne se lance qu'avec le
+ * Python de DATA/venv (pythonEnvironnement).
  * Chaque candidat est lancé pour lire sa version : un raccourci qui ne fait qu'ouvrir une
  * boutique d'applications (Windows) est écarté.
  * @returns {{ ok: true, commande: string, args: string[], version: string, source: string } | { ok: false, essais: string[] }}
  */
 export function trouverPython(ctx, { minimum = [3, 10], executer = spawnSync, plateforme = process.platform, existe = fs.existsSync } = {}) {
   const candidats = [];
-  const venv = plateforme === 'win32'
-    ? [path.join(ctx.donnees, 'venv', 'Scripts', 'python.exe')]
-    : [path.join(ctx.donnees, 'venv', 'bin', 'python3'), path.join(ctx.donnees, 'venv', 'bin', 'python')];
-  const v = venv.find((p) => existe(p));
+  // Le même Python que celui que run lance : le diagnostic ne dit jamais « environnement du studio »
+  // pour un Python que run refuserait.
+  const v = pythonEnvironnement(ctx, { plateforme, existe });
   if (v) candidats.push({ commande: v, args: [], source: 'environnement du studio' });
   candidats.push({ commande: 'python3', args: [], source: 'python3' });
   candidats.push({ commande: 'python', args: [], source: 'python' });
@@ -404,7 +461,7 @@ export function trouverPython(ctx, { minimum = [3, 10], executer = spawnSync, pl
 export async function chargerTexte(ctx, nom) {
   try {
     if (typeof globalThis.fetch !== 'function' || !nodeAssezRecent(ctx.versionNode)) return texteNodeAncien(ctx);
-    if (!nom) return `Il manque le nom du skill à charger. Exemple : ${commandeC360(ctx)} charger base/passe-realisme`;
+    if (!nom) return `Il manque le nom du skill à charger. Exemple : ${commandeC360(ctx)} charger <pack>/<skill>`;
     const compte = lireCompte(ctx);
     if (!compte) return texteNonActive();
     const r = await demanderAvecJeton(ctx, compte, `/api/charger?nom=${encodeURIComponent(nom)}`);
@@ -480,7 +537,7 @@ async function cmdActiver(ctx, o) {
     }
     const conditions = lireVersionConditions(ctx);
     if (!conditions) {
-      ctx.ecrire('Le fichier des conditions est introuvable dans ce studio. Ouvre une nouvelle session pour mettre le studio à jour, puis réessaie.\n');
+      ctx.ecrire('Le fichier des conditions est introuvable dans Studio 360D. Ouvre une nouvelle session pour mettre Studio 360D à jour, puis réessaie.\n');
       return 1;
     }
     const r = await appeler(ctx, 'POST', '/api/activer', {
@@ -540,7 +597,7 @@ async function cmdEtat(ctx, o) {
     } else if (!compte) {
       contexte =
         `Studio 360D est installé mais pas encore activé sur cet ordinateur${source}. ` +
-        'Au début de l\'échange, propose au membre de lancer /base:demarrer : deux minutes, gratuit. ' +
+        'Au début de l\'échange, propose au membre de lancer /base:demarrer : deux minutes. ' +
         'S\'il demande autre chose, réponds d\'abord à sa demande. Tutoie le membre.';
     }
     if (contexte) {
@@ -551,7 +608,7 @@ async function cmdEtat(ctx, o) {
   const s = await sante(ctx);
   ctx.ecrire([
     'Studio 360D',
-    `- Activé sur cet ordinateur : ${compte ? `oui, depuis le ${String(compte.active_le || '').slice(0, 10)}` : 'non (lance /base:demarrer)'}`,
+    `- Activé sur cet ordinateur : ${compte ? `oui, depuis le ${jourLocal(compte.active_le)}` : 'non (lance /base:demarrer)'}`,
     `- Serveur : ${s.ok ? `joignable (${s.ms} ms)` : `injoignable${s.raison ? ` (${s.raison})` : ''}`}`,
     `- Node : ${ctx.versionNode}${nodeAssezRecent(ctx.versionNode) ? '' : ` (trop ancien : il faut ${NODE_MIN} ou plus, lance /base:demarrer)`}`,
     `- Studio : version ${versionCoque(ctx)}, client ${VERSION_CLIENT}`,
@@ -565,7 +622,7 @@ function cmdConditions(ctx) {
   try {
     t = fs.readFileSync(cheminConditions(ctx), 'utf8');
   } catch {
-    ctx.ecrire('Le fichier des conditions est introuvable dans ce studio. Ouvre une nouvelle session pour mettre le studio à jour, puis réessaie.\n');
+    ctx.ecrire('Le fichier des conditions est introuvable dans Studio 360D. Ouvre une nouvelle session pour mettre Studio 360D à jour, puis réessaie.\n');
     return 1;
   }
   ctx.ecrire(`Fichier : ${versSlash(cheminConditions(ctx))}\n\n${t.trimEnd()}\n\n`);
@@ -573,46 +630,102 @@ function cmdConditions(ctx) {
   return 0;
 }
 
-async function cmdRun(ctx, outil, args) {
-  if (!outil) {
-    ctx.ecrireErreur(`Il manque le nom de l'outil. Exemple : ${commandeC360(ctx)} run passe-realisme -- clip.mp4 --preset studio\n`);
-    return 2;
-  }
-  if (!nodeAssezRecent(ctx.versionNode)) {
-    ctx.ecrireErreur(`${texteNodeAncien(ctx)}\n`);
-    return 5;
-  }
-  const compte = lireCompte(ctx);
-  if (!compte) {
-    ctx.ecrireErreur(`${texteNonActive()}\n`);
+// ------------------------------------------------------------------ lancement d'un outil
+
+/**
+ * Le Python de l'environnement du studio, le seul qui lance un outil Python, et celui que le
+ * diagnostic regarde d'abord : DATA/venv/Scripts/python.exe sous Windows ; sous macOS et Linux,
+ * DATA/venv/bin/python3, sinon DATA/venv/bin/python. Jamais un Python du système.
+ * @returns {string|null} null s'il n'existe pas
+ */
+export function pythonEnvironnement(ctx, { plateforme = process.platform, existe = fs.existsSync } = {}) {
+  const candidats = plateforme === 'win32'
+    ? [path.join(ctx.donnees, 'venv', 'Scripts', 'python.exe')]
+    : [path.join(ctx.donnees, 'venv', 'bin', 'python3'), path.join(ctx.donnees, 'venv', 'bin', 'python')];
+  return candidats.find((p) => existe(p)) || null;
+}
+
+/** L'extension du point d'entrée que chaque interpréteur lance. */
+const EXTENSIONS = { python: '.py', node: '.mjs' };
+
+/** Le programme qui lance l'outil, selon l'interpréteur servi ; null pour un interpréteur inconnu. */
+function interpreteurOutil(ctx, interpreteur) {
+  if (interpreteur === 'node') return { commande: process.execPath, python: false, extension: EXTENSIONS.node };
+  if (interpreteur === 'python') return { commande: pythonEnvironnement(ctx), python: true, extension: EXTENSIONS.python };
+  return null;
+}
+
+/** Vrai si le point d'entrée fait partie des fichiers servis et porte l'extension de l'interpréteur. */
+function entreeValable(reponse, programme) {
+  const entree = reponse.point_entree;
+  return typeof entree === 'string' && entree.endsWith(programme.extension) && Array.isArray(reponse.fichiers) &&
+    reponse.fichiers.some((f) => f && f.chemin === entree);
+}
+
+function texteOutilIncomplet(nom) {
+  return `L'outil${typeof nom === 'string' && nom ? ` « ${nom} »` : ''} est arrivé incomplet : son programme principal manque ` +
+    'ou ne correspond pas à son interpréteur. Consigne pour Claude : dis-le au membre, puis lance la commande diagnostic ' +
+    'du studio et propose-lui de coller le résultat dans l\'Entraide de la communauté.';
+}
+
+/** Vrai si DATA/environnement.json porte l'empreinte servie, ou s'il n'y a rien à contrôler. */
+function environnementAJour(ctx, reponse) {
+  if (reponse.nom === OUTIL_ENVIRONNEMENT || !reponse.environnement) return true;
+  const pose = lireJSONFichier(fichier(ctx, 'environnement.json'));
+  return Boolean(pose) && pose.empreinte === reponse.environnement;
+}
+
+/**
+ * L'environnement du processus de l'outil, et de lui seul : celui du client, plus les variables
+ * du contrat (C4). Aucune clé. Le nom exact de la variable PATH sous Windows est gardé.
+ */
+function variablesOutil(ctx, reponse) {
+  const env = { ...process.env };
+  const nomPath = (process.platform === 'win32' && Object.keys(env).find((k) => k.toUpperCase() === 'PATH')) || 'PATH';
+  env[nomPath] = [path.join(ctx.donnees, 'ffmpeg', 'bin'), env[nomPath]].filter(Boolean).join(path.delimiter);
+  return Object.assign(env, {
+    C360_DONNEES: ctx.donnees,
+    C360_COMMANDE: commandeC360(ctx),
+    C360_POLICES: path.join(racinePlugin(ctx), 'polices'),
+    C360_ENVIRONNEMENT: reponse.environnement || '',
+    PLAYWRIGHT_BROWSERS_PATH: path.join(ctx.donnees, 'ms-playwright'),
+    PYTHONDONTWRITEBYTECODE: '1',
+    PYTHONIOENCODING: 'utf-8',
+    PYTHONUTF8: '1',
+  });
+}
+
+/**
+ * Lance un outil tel que le sert /api/outil (ou que l'assemble outils/lancer_outil.mjs de la
+ * fabrique) : contrôle de l'interpréteur et de l'environnement, copie des fichiers dans
+ * DATA/exec/<id>/, lancement depuis le dossier courant du membre, puis effacement de la copie,
+ * même sur un signal.
+ * @param {object} ctx      le contexte de creerContexte
+ * @param {object} reponse  { nom, interpreteur, point_entree, environnement, fichiers: [{ chemin, contenu }] }
+ * @param {string[]} [args] les arguments de l'outil
+ * @returns {Promise<number>} le code de l'outil ; 3 refus ; 4 interpréteur introuvable ; 6 environnement à poser
+ */
+export async function executerOutil(ctx, reponse, args = []) {
+  const nom = reponse && reponse.nom;
+  const programme = interpreteurOutil(ctx, reponse && reponse.interpreteur);
+  if (!programme) {
+    noterErreur(ctx, `run ${nom}`, `interpréteur inconnu : ${reponse && reponse.interpreteur}`);
+    ctx.ecrireErreur('Cet outil demande un interpréteur que Studio 360D ne connaît pas. Mets Studio 360D à jour.\n');
     return 3;
   }
-  let r;
-  try {
-    r = await demanderAvecJeton(ctx, compte, `/api/outil?nom=${encodeURIComponent(outil)}`);
-  } catch (e) {
-    noterErreur(ctx, `run ${outil}`, e instanceof ErreurReseau ? `serveur injoignable : ${e.message}` : String(e && e.message));
-    ctx.ecrireErreur(`${texteServeurInjoignable(ctx)}\n`);
+  if (!entreeValable(reponse, programme)) {
+    noterErreur(ctx, `run ${nom}`, 'point d\'entrée absent des fichiers ou d\'une autre extension');
+    ctx.ecrireErreur(`${texteOutilIncomplet(nom)}\n`);
     return 3;
   }
-  if (!(r.statut === 200 && r.donnees.ok && Array.isArray(r.donnees.fichiers))) {
-    noterErreur(ctx, `run ${outil}`, `${r.donnees.raison || 'refus'} (HTTP ${r.statut})`);
-    ctx.ecrireErreur(`${texteRefus(ctx, r.donnees)}\n`);
-    return 3;
+  if (!environnementAJour(ctx, reponse)) {
+    noterErreur(ctx, `run ${nom}`, 'environnement du studio absent ou d\'une autre empreinte');
+    ctx.ecrireErreur(`${texteEnvironnementAPoser(ctx)}\n`);
+    return 6;
   }
-  const o = r.donnees;
-  if (o.interpreteur !== 'python') {
-    ctx.ecrireErreur(`Cet outil demande l'interpréteur « ${o.interpreteur} », que ce studio ne sait pas encore lancer. Mets le studio à jour.\n`);
-    return 3;
-  }
-  const py = trouverPython(ctx, { minimum: lireVersion(o.python_min) || [3, 10] });
-  if (!py.ok) {
-    noterErreur(ctx, `run ${outil}`, `Python introuvable (${py.essais.join(' ; ')})`);
-    ctx.ecrireErreur(
-      `Il faut Python ${o.python_min || '3.10'} ou plus pour cet outil, et je ne le trouve pas (${py.essais.join(' ; ')}).\n` +
-      'Consigne pour Claude : propose au membre de lancer /base:demarrer, qui installe Python. ' +
-      'Après l\'installation, il faut quitter et rouvrir l\'application.\n',
-    );
+  if (!programme.commande) {
+    noterErreur(ctx, `run ${nom}`, 'Python de l\'environnement du studio introuvable');
+    ctx.ecrireErreur(`Le Python de l'environnement du studio est introuvable. ${texteEnvironnementAPoser(ctx)}\n`);
     return 4;
   }
 
@@ -637,21 +750,22 @@ async function cmdRun(ctx, outil, args) {
   for (const s of signaux) process.on(s, surSignal);
   process.on('exit', effacer);
   try {
-    for (const f of o.fichiers) {
+    for (const f of reponse.fichiers) {
       const cible = cheminSur(dossier, f.chemin);
       fs.mkdirSync(path.dirname(cible), { recursive: true });
       fs.writeFileSync(cible, f.contenu);
     }
-    const script = cheminSur(dossier, o.point_entree);
+    const script = cheminSur(dossier, reponse.point_entree);
     return await new Promise((resoudre) => {
-      enfant = spawn(py.commande, [...py.args, script, ...args], {
+      enfant = spawn(programme.commande, [script, ...args], {
         stdio: 'inherit',
         cwd: process.cwd(),
         windowsHide: true,
-        env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1', PYTHONIOENCODING: 'utf-8', PYTHONUTF8: '1' },
+        env: variablesOutil(ctx, reponse),
       });
       enfant.on('error', (e) => {
-        ctx.ecrireErreur(`Python n'a pas pu démarrer : ${e.message}\n`);
+        noterErreur(ctx, `run ${nom}`, `démarrage impossible : ${e.message}`);
+        ctx.ecrireErreur(`${masquer(`Le programme de l'outil n'a pas pu démarrer : ${e.message}`, ctx)}\n`);
         resoudre(4);
       });
       enfant.on('exit', (code, signal) => {
@@ -659,14 +773,45 @@ async function cmdRun(ctx, outil, args) {
       });
     });
   } catch (e) {
-    noterErreur(ctx, `run ${outil}`, String(e && e.message));
-    ctx.ecrireErreur(`Le studio n'a pas pu préparer l'outil : ${e.message}\n`);
+    noterErreur(ctx, `run ${nom}`, String(e && e.message));
+    ctx.ecrireErreur(`${masquer(`Le studio n'a pas pu préparer l'outil : ${e && e.message}`, ctx)}\n`);
     return 3;
   } finally {
     effacer();
     for (const s of signaux) process.removeListener(s, surSignal);
     process.removeListener('exit', effacer);
   }
+}
+
+/** run : l'outil demandé au serveur, puis lancé par executerOutil. */
+async function cmdRun(ctx, outil, args) {
+  if (!outil) {
+    ctx.ecrireErreur(`Il manque le nom de l'outil. Exemple : ${commandeC360(ctx)} run <outil> -- <arguments>\n`);
+    return 2;
+  }
+  if (!nodeAssezRecent(ctx.versionNode)) {
+    ctx.ecrireErreur(`${texteNodeAncien(ctx)}\n`);
+    return 5;
+  }
+  const compte = lireCompte(ctx);
+  if (!compte) {
+    ctx.ecrireErreur(`${texteNonActive()}\n`);
+    return 3;
+  }
+  let r;
+  try {
+    r = await demanderAvecJeton(ctx, compte, `/api/outil?nom=${encodeURIComponent(outil)}`);
+  } catch (e) {
+    noterErreur(ctx, `run ${outil}`, e instanceof ErreurReseau ? `serveur injoignable : ${e.message}` : String(e && e.message));
+    ctx.ecrireErreur(`${texteServeurInjoignable(ctx)}\n`);
+    return 3;
+  }
+  if (!(r.statut === 200 && r.donnees.ok && Array.isArray(r.donnees.fichiers))) {
+    noterErreur(ctx, `run ${outil}`, `${r.donnees.raison || 'refus'} (HTTP ${r.statut})`);
+    ctx.ecrireErreur(`${texteRefus(ctx, r.donnees)}\n`);
+    return 3;
+  }
+  return executerOutil(ctx, r.donnees, args);
 }
 
 function premiereLigne(commande, args) {
@@ -707,12 +852,59 @@ function nomSysteme() {
   return process.platform;
 }
 
+/** ffmpeg ou ffprobe : celui de DATA/ffmpeg/bin d'abord, puis celui du système ; null s'il ne répond pas. */
+function programmeVideo(ctx, nom) {
+  const local = path.join(ctx.donnees, 'ffmpeg', 'bin', process.platform === 'win32' ? `${nom}.exe` : nom);
+  const candidats = fs.existsSync(local) ? [[local, 'environnement du studio'], [nom, 'système']] : [[nom, 'système']];
+  for (const [commande, source] of candidats) {
+    const ligne = premiereLigne(commande, ['-hide_banner', '-version']);
+    if (ligne) return { ligne, source };
+  }
+  return null;
+}
+
+function ligneEnvironnement(ctx) {
+  const pose = lireJSONFichier(fichier(ctx, 'environnement.json'));
+  if (!pose || typeof pose.empreinte !== 'string' || !pose.empreinte) return 'absent';
+  return `posé le ${String(pose.pose_le || '').slice(0, 10) || 'date inconnue'}, empreinte ${pose.empreinte.slice(0, 12)}`;
+}
+
+/**
+ * Le dossier de configuration de Claude Code : celui qui contient DATA (<config>/plugins/data/<id>),
+ * sinon CLAUDE_CONFIG_DIR, sinon ~/.claude.
+ */
+function dossierConfiguration(ctx) {
+  const parent = path.dirname(ctx.donnees);
+  if (path.basename(parent) === 'data' && path.basename(path.dirname(parent)) === 'plugins') return path.dirname(path.dirname(parent));
+  return process.env.CLAUDE_CONFIG_DIR ? path.resolve(process.env.CLAUDE_CONFIG_DIR) : path.join(os.homedir(), '.claude');
+}
+
+function entree(objet, cle) {
+  const estObjet = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
+  return estObjet(objet) && Object.hasOwn(objet, cle) && estObjet(objet[cle]) ? objet[cle] : null;
+}
+
+/**
+ * Mise à jour automatique du catalogue (V10) : « oui », « non » ou « inconnu ». Seul autoUpdate de
+ * l'entrée studio-360d est regardé, d'abord dans settings.json (extraKnownMarketplaces), puis dans
+ * plugins/known_marketplaces.json ; une entrée sans la clé vaut « non ». Rien d'autre n'est gardé
+ * ni imprimé.
+ */
+export function miseAJourAutomatique(dossierConfig) {
+  const reglages = entree(entree(lireJSONFichier(path.join(dossierConfig, 'settings.json')), 'extraKnownMarketplaces'), CATALOGUE);
+  if (reglages && typeof reglages.autoUpdate === 'boolean') return reglages.autoUpdate ? 'oui' : 'non';
+  const connu = entree(lireJSONFichier(path.join(dossierConfig, 'plugins', 'known_marketplaces.json')), CATALOGUE);
+  if (connu && typeof connu.autoUpdate === 'boolean') return connu.autoUpdate ? 'oui' : 'non';
+  return reglages || connu ? 'non' : 'inconnu';
+}
+
 export async function rapportDiagnostic(ctx) {
   const compte = lireCompte(ctx);
   const jeton = lireJSONFichier(fichier(ctx, 'jeton.json'));
   const py = trouverPython(ctx);
-  const ffmpeg = premiereLigne('ffmpeg', ['-hide_banner', '-version']);
-  const ffprobe = premiereLigne('ffprobe', ['-hide_banner', '-version']);
+  const pythonDuStudio = py.ok && py.source === 'environnement du studio';
+  const ffmpeg = programmeVideo(ctx, 'ffmpeg');
+  const ffprobe = programmeVideo(ctx, 'ffprobe');
   const s = await sante(ctx);
   const erreur = lireJSONFichier(fichier(ctx, 'derniere-erreur.json'));
   let execs = 0;
@@ -721,15 +913,19 @@ export async function rapportDiagnostic(ctx) {
     `Rapport de diagnostic Studio 360D (${new Date(ctx.horloge()).toISOString().slice(0, 16).replace('T', ' ')} UTC)`,
     `- Système : ${nomSysteme()}, noyau ${os.release()} (${process.platform}, ${os.arch()})`,
     `- Node : ${ctx.versionNode}${nodeAssezRecent(ctx.versionNode) ? '' : ` (trop ancien : il faut ${NODE_MIN} ou plus)`}`,
-    `- Python : ${py.ok ? `${py.version} (${py.source})` : `introuvable ou trop ancien, il faut 3.10 ou plus (${py.essais.join(' ; ')})`}`,
-    `- ffmpeg : ${ffmpeg ? (/version (\S+)/.exec(ffmpeg) || [null, 'présent'])[1] : 'introuvable'}`,
-    `- ffprobe : ${ffprobe ? 'présent' : 'introuvable'}`,
+    `- Python : ${pythonDuStudio ? `${py.version} (environnement du studio)` : `absent (l'environnement du studio le pose)${py.ok ? `, Python du système : ${py.version} (${py.source})` : ''}`}`,
+    `- ffmpeg : ${ffmpeg ? `${(/version (\S+)/.exec(ffmpeg.ligne) || [null, 'présent'])[1]} (${ffmpeg.source})` : 'introuvable'}`,
+    `- ffprobe : ${ffprobe ? `présent (${ffprobe.source})` : 'introuvable'}`,
   ];
   if (process.platform === 'win32') lignes.push(`- Git Bash : ${gitBash() ? 'présent' : 'absent (Claude passe alors par PowerShell)'}`);
   lignes.push(
     `- Studio : version ${versionCoque(ctx)}, client ${VERSION_CLIENT}`,
-    `- Dossier du studio : ${versSlash(ctx.donnees)}`,
-    `- Activé sur cet ordinateur : ${compte ? `oui, depuis le ${String(compte.active_le || '').slice(0, 10)}` : 'non'}`,
+    `- Dossier de données des outils : ${versSlash(ctx.donnees)}`,
+    `- Longueur du dossier de données des outils : ${ctx.donnees.length} caractères (${LONGUEUR_DONNEES_MAX} au plus sous Windows)`,
+    `- Environnement : ${ligneEnvironnement(ctx)}`,
+    `- Mises à jour automatiques : ${miseAJourAutomatique(dossierConfiguration(ctx))} (lu dans les réglages de l'utilisateur ; ` +
+      'ni les réglages du projet, ni les réglages locaux ou gérés, ni les variables qui coupent les mises à jour ne sont lus)',
+    `- Activé sur cet ordinateur : ${compte ? `oui, depuis le ${jourLocal(compte.active_le)}` : 'non'}`,
     `- Jeton de session : ${jeton && jeton.expire > ctx.horloge() ? 'valide' : jeton ? 'à renouveler' : 'aucun'}`,
     `- Serveur : ${s.ok ? `joignable (${s.ms} ms, version ${s.version})` : `injoignable (${s.raison || `HTTP ${s.statut}`})`}`,
     `- Dossiers d'exécution restants : ${execs}`,
@@ -749,8 +945,9 @@ function aide(ctx) {
     `    --nom : le nom de l'ordinateur envoyé au serveur, de 1 à ${NOM_MAX} caractères (par défaut, son nom d'hôte).`,
     '    Un autre nom compte comme un autre ordinateur : sert à l\'essai, avec un autre dossier --data.',
     `${c} conditions`,
-    `${c} charger <plugin/skill>`,
+    `${c} charger <plugin/skill>[/etape]`,
     `${c} run <outil> -- <arguments>`,
+    '    lance un programme du studio, en Python ou en Node, puis efface sa copie.',
     `${c} nettoyer`,
     `${c} diagnostic`,
     '',
@@ -824,9 +1021,6 @@ export async function principal(argv, options = {}) {
     }
     case 'diagnostic':
       ctx.ecrire(`${await rapportDiagnostic(ctx)}\n`);
-      return 0;
-    case 'depenses':
-      ctx.ecrire('Le journal des dépenses arrivera avec la brique « générer ».\n');
       return 0;
     case 'aide':
     case '--help':

@@ -1,0 +1,10 @@
+{
+  "base": {
+    "version": "0.1.4",
+    "empreinte": "a675c4c4978a7b33ca4a784f9b56514a8b6cf638c1c123b59c33233a5e1f8c74"
+  },
+  "images": {
+    "version": "0.1.0",
+    "empreinte": "2913c386c249dbf08db757a2de952276ec3f976107ed4d9a14223a0bb95d2bb8"
+  }
+}

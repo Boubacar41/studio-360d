@@ -1,11 +1,35 @@
 # Studio 360D
 
 Les skills de création par IA de la communauté **Créateurs 360D**, pour l'application de bureau
-Claude (onglet Code, session locale), sous **Windows, macOS ou Linux (bêta)**.
+Claude (onglet Code, session locale), sous **Windows, macOS ou Linux**.
 
-Ce dépôt ne contient que la **coque** : la description de chaque skill et un petit client, `c360`,
-dont le code est lisible ici. Les procédures et les scripts restent sur le serveur de
-Studio 360D, qui les sert aux membres actifs de la communauté, au moment où un skill s'ouvre.
+Ce dépôt ne contient que la **coque** : la description de chaque skill, un petit client, `c360`,
+dont le code est lisible ici, et la police DM Sans (licence libre SIL Open Font License). Les
+procédures et les programmes restent sur le serveur de Studio 360D, qui les sert aux membres
+actifs de la communauté, au moment où un skill s'ouvre.
+
+## Ce que contient Studio 360D
+
+### Base
+
+Le socle de Studio 360D : démarrer, ta marque et ton marché, la stratégie, les prompts, la génération d'images, les personnages et la passe de réalisme.
+
+- `/base:demarrer` : Installer, activer et préparer Studio 360D, puis ranger ton studio. À utiliser au premier lancement, sur un nouvel ordinateur, si le studio n'est pas activé ou si quelque chose ne marche pas.
+- `/base:generer` : Générer des images chez ton fournisseur (fal.ai par défaut), avec le prix lu en direct et les dépenses notées. À utiliser pour lancer une génération, connaître un prix ou ce que tu as dépensé.
+- `/base:inspiration` : Disséquer une pub ou une image qui marche (lien, capture ou fichier), en tirer un squelette neutre et des concepts pour ta marque. À utiliser quand on part d'un contenu qui performe.
+- `/base:marche` : Étude de marché « voix du client » (express par défaut, ou complète) avec personas, mots, objections et affirmations à éviter. À utiliser pour connaître ses clients ou préparer une offre.
+- `/base:marque` : Créer ou mettre à jour la fiche d'une marque ou d'un client (offre, public, ton, charte, produits) depuis un entretien, un site ou des documents. À utiliser avant de créer pour une nouvelle marque.
+- `/base:passe-realisme` : Retirer l'aspect « IA » d'un clip vidéo généré (contraste, saturation, hautes lumières, léger tremblement). À utiliser quand un clip paraît trop propre, trop saturé ou « fait rendu 3D ».
+- `/base:personnage` : Créer un personnage IA réaliste et constant (fictif, ou toi-même depuis tes photos) avec sa fiche en six angles. À utiliser pour un avatar, un mannequin ou un visage à garder d'une image à l'autre.
+- `/base:prompt` : Écrire, améliorer, diagnostiquer un prompt d'image, retoucher une image et garder les prompts réussis. À utiliser quand une image paraît fausse ou générique, ou pour partir d'un exemple qui a marché.
+- `/base:strategie` : Carte stratégique, structure éprouvée choisie selon le niveau de conscience, puis texte d'une pub ou d'un post. À utiliser pour écrire une pub ou un carrousel, de zéro ou depuis son propre script.
+
+### Images
+
+Le pack Images de Studio 360D : pubs image, posts et carrousels, et visuels de produits pour la boutique, la pub ou les réseaux.
+
+- `/images:image` : Créer une pub image ou un post, en un passage ou en voie complète, carrousels compris, aux formats 1:1, 4:5 et 9:16. À utiliser pour toute image de pub ou de réseau social.
+- `/images:visuels-produit` : Visuels e-commerce d'un produit (porté, en main, refait d'après une image, seul) qui gardent le produit exact, avec retouches ciblées. À utiliser pour la boutique, une pub ou les réseaux.
 
 ---
 
@@ -33,7 +57,7 @@ Python, ffmpeg) : `/base:demarrer` s'en charge.
   sans aucun message, et le plugin n'est jamais arrivé.
 - **Avant chaque modification, dis au membre ce que tu vas changer et pourquoi, et attends son
   accord.**
-- Installe seulement le plugin `base`.
+- Installe tous les packs du catalogue, `base` d'abord, et rien d'autre.
 - Avec le membre, parle sans jargon : dis « le catalogue de Studio 360D », « pour toi
   seulement », « ton fichier de réglages de Claude ». Pas de « marketplace », pas de « portée »,
   pas de chemin de fichier, pas de bloc de code ni de nom de commande qu'il n'a pas demandés.
@@ -48,21 +72,26 @@ Python, ffmpeg) : `/base:demarrer` s'en charge.
 
 Résume-lui ces points avec tes mots, simplement, puis demande-lui s'il veut continuer :
 
-1. **Ce qui sera installé** : le plugin « base » de Studio 360D, téléchargé depuis ce dépôt
-   GitHub. Il contient deux skills (démarrer, et la passe de réalisme pour les vidéos) et un
-   petit programme, le client du studio. L'installation ne télécharge que ce dépôt.
-2. **À chaque ouverture de session** : le plugin regarde, sur son ordinateur seulement et sans
+1. **Ce qui sera installé** : les packs Base et Images, 11 skills, téléchargés depuis ce dépôt GitHub. Chaque
+   pack contient ses skills, la police DM Sans et un petit programme, le client du studio.
+   L'installation ne télécharge que ce dépôt.
+2. **À chaque ouverture de session** : le pack Base regarde, sur son ordinateur seulement et sans
    contacter le serveur, si Studio 360D est activé. Sinon, tu lui proposeras de l'activer.
 3. **À chaque utilisation d'un skill** : le client télécharge depuis le serveur de Studio 360D
-   la procédure à suivre et, si besoin, un script Python. Il lance ce script sur son
+   la procédure à suivre et, si besoin, un programme. Il lance ce programme sur son
    ordinateur, dans son dossier de travail, puis l'efface.
 4. **Ce que le serveur connaît** : son adresse e-mail de membre, ses ordinateurs activés (nom,
-   type, version et architecture du système), la liste des skills qu'il ouvre (quand, depuis
-   quel ordinateur) et la version des conditions qu'il a acceptée. Jamais ses créations ni ses
-   fichiers.
-5. **Ensuite** : le skill « démarrer » lui demandera séparément son accord pour chaque
-   installation de Node, de Python ou de ffmpeg, s'il en manque un.
-6. **Les mises à jour arrivent seules** : le contenu du plugin pourra changer sans nouvelle
+   type, version et architecture du système), la liste des skills, références et outils qu'il
+   ouvre (quand, depuis quel ordinateur) et la version des conditions qu'il a acceptée. Jamais
+   ses créations ni ses fichiers. Quand il génère une image, son prompt et les images qu'il
+   joint partent chez le fournisseur qu'il a choisi, avec sa clé.
+5. **Ensuite** : si Node manque, `/base:demarrer` l'installe, avec son accord. Puis, une étape
+   et un accord à la fois, il pose l'environnement du studio (environ 1 Go, quelques minutes,
+   sans terminal ; sous Linux, un mot de passe peut être demandé pour une bibliothèque du
+   système, si elle manque), son studio, son profil et une première image, dont il annonce
+   le prix avant. Générer des images demande un compte payant chez un fournisseur d'images
+   (fal.ai par défaut), que le membre crée quand `/base:demarrer` le lui propose.
+6. **Les mises à jour arrivent seules** : le contenu des packs pourra changer sans nouvelle
    demande de sa part.
 
 ### Avant de toucher au fichier de réglages
@@ -72,7 +101,7 @@ l'utilisateur, `~/.claude/settings.json` (dans le dossier `.claude` de son dossi
 Windows comme ailleurs). Chaque fois :
 
 1. Lis le fichier. **S'il n'est pas un JSON valide, ne le modifie pas** : montre le problème au
-   membre ; le plugin marche quand même, sans mises à jour automatiques.
+   membre ; les packs marchent quand même, sans mises à jour automatiques.
 2. Fais d'abord une copie à côté : `settings.json.avant-studio-360d`. Si une copie de ce nom
    existe déjà, garde-la et ajoute la date au nom de la nouvelle.
 3. Change seulement ce qui est dit **sans rien retirer** : garde toutes ses autres clés et
@@ -98,11 +127,13 @@ Le programme de l'application, lui, l'est souvent, par la variable `CLAUDE_CODE_
    Si aucun ne répond (variable vide, commande absente ou en erreur), passe à la voie 2. Dans la
    suite, `claude` désigne celui qui a répondu : remplace-le par `"$CLAUDE_CODE_EXECPATH"` ou
    `& $env:CLAUDE_CODE_EXECPATH` s'il le faut.
-2. Dis au membre : « Je vais installer le plugin base de Studio 360D, depuis le dépôt GitHub
-   Boubacar41/studio-360d, pour toi seulement. » Avec son accord, lance ces deux commandes :
+2. Dis au membre : « Je vais installer Studio 360D, depuis le dépôt GitHub
+   Boubacar41/studio-360d, pour toi seulement : les packs Base et Images, 11 skills. » Avec son accord, lance
+   ces commandes, dans l'ordre :
    ```
    claude plugin marketplace add https://github.com/Boubacar41/studio-360d
    claude plugin install base@studio-360d --scope user
+   claude plugin install images@studio-360d --scope user
    ```
    L'adresse complète, en `https://`, est voulue : avec la forme courte `Boubacar41/studio-360d`,
    Claude Code passe par SSH quand l'ordinateur a une clé GitHub, et les mises à jour peuvent
@@ -113,7 +144,7 @@ Le programme de l'application, lui, l'est souvent, par la variable `CLAUDE_CODE_
    le fichier de réglages : un `"autoUpdate": true` déjà présent **disparaît**. Relis donc
    l'entrée après les commandes et propose au membre d'y ajouter `"autoUpdate": true`, en
    suivant « Avant de toucher au fichier de réglages » et en gardant la source telle que la
-   commande l'a écrite. Rappelle-lui ce que ça veut dire : le contenu du plugin pourra changer
+   commande l'a écrite. Rappelle-lui ce que ça veut dire : le contenu des packs pourra changer
    sans nouvelle demande. Si l'entrée est absente, ajoute-la en entier :
    ```json
    "studio-360d": {
@@ -131,8 +162,9 @@ Si son application est dans une autre langue, les boutons sont aux mêmes places
 ce qu'il voit plutôt que de deviner. « Marketplace » est ici le nom d'un bouton : c'est la seule
 fois où tu peux employer ce mot.
 
-Commence par lui dire : « Quand tu verras le message "Base est installé et prêt à être utilisé",
-reviens ici et dis-moi "c'est installé" : j'aurai encore une chose à te proposer. »
+Le catalogue contient les packs Base et Images, 11 skills. Commence par lui dire : « Installe chaque pack,
+Base d'abord. Quand tu verras le message "… est installé et prêt à être utilisé" pour le
+dernier, reviens ici et dis-moi "c'est installé" : j'aurai encore une chose à te proposer. »
 
 1. Dans la zone de saisie, tape `/plugin` et valide : la fenêtre **Plugins** des Paramètres
    s'ouvre. En haut, on voit « Les vôtres », « Découvrir », un champ « Rechercher » et un bouton
@@ -142,28 +174,30 @@ reviens ici et dis-moi "c'est installé" : j'aurai encore une chose à te propos
 4. Un avertissement rappelle de n'ajouter que des catalogues de confiance. Dans le champ
    **URL**, colle `https://github.com/Boubacar41/studio-360d`, puis clique **Synchro**.
 5. L'onglet **Découvrir** s'affiche, limité au catalogue studio-360d : le plugin **Base**
-   apparaît. Sur **Base**, clique
+   apparaît, avec les autres packs. Sur **Base**, clique
    **Ajouter à cet ordinateur** (le bouton lui-même, pas sa petite flèche). On voit
    « ✓ Ajouté », puis la notification « Base est installé et prêt à être utilisé ».
-6. Ferme la fenêtre et reviens dans la conversation.
+6. Fais ensuite de même sur chaque autre pack, un par un : **Ajouter à cet ordinateur**, puis
+   la notification à son nom (un pack amène Base de toute façon).
+7. Ferme la fenêtre et reviens dans la conversation.
 
-Si la fenêtre a été fermée avant ce clic sur Base : `/plugin`, onglet
-**Découvrir**, icône de filtre, sous « Source » choisis **studio-360d**, puis reprends au point 5.
-Base n'apparaît pas dans « Les vôtres » tant qu'il n'est pas installé.
+Si la fenêtre a été fermée avant la fin : `/plugin`, onglet **Découvrir**, icône de filtre, sous
+« Source » choisis **studio-360d**, puis reprends au point 5 avec les packs qui manquent. Un pack
+n'apparaît dans « Les vôtres » qu'une fois installé.
 
 Quand il revient :
 
-7. **Les mises à jour automatiques** : le menu ne les active pas. Propose-les comme à la voie 1,
+8. **Les mises à jour automatiques** : le menu ne les active pas. Propose-les comme à la voie 1,
    point 3 : relis l'entrée `studio-360d` du fichier de réglages et ajoutes-y
    `"autoUpdate": true`, avec son accord et en suivant « Avant de toucher au fichier de
    réglages ».
-8. Passe à « Vérifier l'installation ».
+9. Passe à « Vérifier l'installation ».
 
 ### Vérifier l'installation
 
 1. Demande au membre de taper `/base` dans la zone de saisie **de cette session-ci** (par les
-   deux voies, le plugin est actif tout de suite) : `/base:demarrer` doit apparaître dans la
-   liste.
+   deux voies, les packs sont actifs tout de suite) : `/base:demarrer` doit apparaître dans la
+   liste. Puis, pour chaque autre pack, le nom du pack précédé de `/` : ses skills apparaissent.
 2. Si `/base:demarrer` n'apparaît pas : qu'il ouvre une **nouvelle
    session** (le bouton **+ New** dans la barre latérale, ou Ctrl+N sous Windows, Cmd+N sous
    macOS) et y tape `/base`.
@@ -173,11 +207,13 @@ Quand il revient :
 
 ### Après l'installation
 
-`/base:demarrer` vérifie Node (22 ou plus) et l'installe au besoin. Il présente les conditions
-d'utilisation et active l'ordinateur avec un code reçu par e-mail. Ensuite seulement, il vérifie
-Python (3.10 ou plus) et ffmpeg, les installe avec l'accord du membre, une étape à la fois, et
-fait un premier essai gratuit. Après quoi, les skills s'ouvrent d'eux-mêmes quand la demande du
-membre s'y prête, par exemple « enlève l'aspect IA de ce clip ».
+Si Node manque, `/base:demarrer` l'installe. Il présente les conditions d'utilisation et active
+l'ordinateur avec un code reçu par e-mail. Ensuite, avec l'accord du membre et une étape à la
+fois, il pose l'environnement du studio (environ 1 Go, quelques minutes, sans terminal ; sous
+Linux, un mot de passe peut être demandé pour une bibliothèque du système, si elle manque),
+puis son studio, son profil et une première image, dont il annonce le prix avant.
+Après quoi, les skills s'ouvrent d'eux-mêmes quand la demande du membre s'y prête, par exemple
+« enlève l'aspect IA de ce clip ».
 
 ### Ce que fait le client `c360`
 
@@ -185,30 +221,31 @@ membre s'y prête, par exemple « enlève l'aspect IA de ce clip ».
   activé sur l'ordinateur. Si Node manque, un message d'erreur peut s'afficher à l'ouverture
   d'une session : `/base:demarrer` le règle.
 - **À chaque utilisation d'un skill**, il télécharge depuis le serveur de Studio 360D la
-  procédure à suivre et, si besoin, un script Python. Le script tourne dans le dossier de
+  procédure à suivre et, si besoin, un programme. Le programme tourne dans le dossier de
   travail du membre, puis le client l'efface.
 - **Il envoie au serveur** : l'adresse e-mail de membre et la version des conditions acceptée
   (à l'activation), le nom de l'ordinateur, le type, la version et l'architecture de son
-  système, la clé d'appareil, et le nom de chaque skill ou outil demandé. Le serveur tient le
+  système, la clé d'appareil, et le nom de chaque skill, référence ou outil demandé. Le serveur tient le
   journal de ces chargements. Jamais les fichiers ni les créations du membre.
-- **Il garde** la clé d'appareil dans le dossier de données du plugin,
-  `~/.claude/plugins/data/base-studio-360d/`. Si le serveur ne reconnaît plus l'ordinateur
-  (retiré de la liste des ordinateurs du membre), il efface cette clé : `/base:demarrer` peut
-  alors le réactiver.
+- **Il garde** la clé d'appareil et l'environnement du studio dans le dossier de données des
+  outils, `~/.claude/plugins/data/base-studio-360d/`, commun à tous les packs. Si le serveur ne
+  reconnaît plus l'ordinateur (retiré de la liste des ordinateurs du membre), il efface cette
+  clé : `/base:demarrer` peut alors le réactiver.
 
 ### Désinstaller
 
 Si le membre te demande de désinstaller Studio 360D, dis-lui d'abord ce que tu vas retirer, puis,
 avec son accord :
 
-1. **Le plugin**, par la commande (voie 1, point 1, pour trouver `claude` ou le programme de
-   l'application) : `claude plugin uninstall base@studio-360d`. Elle efface aussi le dossier de
-   données du plugin, sauf si on ajoute `--keep-data`.
-2. **Le catalogue** : `claude plugin marketplace remove studio-360d`. Ces deux commandes
-   retirent aussi nos deux entrées du fichier de réglages.
-3. **Ce qui reste** : la commande laisse le dossier `~/.claude/plugins/cache/studio-360d/` ;
+1. **Les packs**, par la commande (voie 1, point 1, pour trouver `claude` ou le programme de
+   l'application) : `claude plugin uninstall <pack>@studio-360d` pour chaque pack autre que
+   Base, puis `claude plugin uninstall base@studio-360d`. Chaque commande efface aussi le dossier
+   de données du pack, sauf si on ajoute `--keep-data`.
+2. **Le catalogue** : `claude plugin marketplace remove studio-360d`. Ces commandes retirent
+   aussi nos entrées du fichier de réglages.
+3. **Ce qui reste** : les commandes laissent le dossier `~/.claude/plugins/cache/studio-360d/` ;
    efface-le. Efface aussi `~/.claude/plugins/data/base-studio-360d/` s'il reste : il contient
-   la clé de cet ordinateur.
+   la clé de cet ordinateur et l'environnement du studio.
 
    Si aucune commande ne répond, ne retire rien à la main : dis-le au membre et propose-lui
    d'écrire dans l'Entraide de la communauté.
@@ -224,10 +261,15 @@ avec son accord :
 
 - L'application de bureau Claude, avec un abonnement Pro au minimum. Tu travailles dans
   l'onglet **Code**, en session **locale**, dans le dossier où tu ranges tes créations.
-- Un ordinateur sous **Windows, macOS ou Linux (bêta)**. Pour Linux : Ubuntu 22.04 ou plus,
-  ou Debian 12 ou plus.
-- Node, Python et ffmpeg : `/base:demarrer` les vérifie et les installe avec ton accord, une
-  étape à la fois. Il faudra peut-être fermer et rouvrir l'application.
+- Un ordinateur sous **Windows, macOS ou Linux**. Pour Linux : Ubuntu 22.04 ou plus, ou
+  Debian 12 ou plus.
+- Un compte payant chez un fournisseur d'images (fal.ai par défaut), réglé à l'usage : sans lui,
+  aucune image ne sort. Tu le crées quand Claude te le propose.
+- Rien d'autre à préparer. Si Node manque, `/base:demarrer` l'installe ; il faudra peut-être
+  fermer et rouvrir l'application. Il pose ensuite, avec ton accord, l'environnement du studio
+  (environ 1 Go, quelques minutes, sans terminal ; sous Linux, un mot de passe peut être demandé
+  pour une bibliothèque du système, si elle manque), puis ton studio, ton profil et une première
+  image, dont il t'annonce le prix avant.
 
 **Installer Studio 360D**
 
@@ -240,11 +282,13 @@ tape `/base:demarrer`. S'il n'apparaît pas quand tu tapes `/base`, ouvre une no
 (**+ New**, ou Ctrl+N sous Windows, Cmd+N sous macOS) et réessaie. Le premier lancement prend
 quelques minutes.
 
-**Ce qui reste chez toi**
+**Ce qui reste chez toi, et ce qui en sort**
 
-Aucune création ni aucun fichier ne part sur le serveur : tes créations, tes fichiers et ceux de
-tes clients restent sur ton ordinateur. Le serveur ne connaît que ton e-mail, tes ordinateurs
-activés et la liste des skills que tu ouvres. Le détail est dans
+Aucune création ni aucun fichier ne part sur le serveur de Studio 360D, ni les tiens ni ceux de
+tes clients. Quand tu génères une image, ton prompt et les images que tu joins partent chez le
+fournisseur que tu as choisi, avec ta clé, comme si tu l'utilisais toi-même. Ne joins donc rien
+que tu ne veux pas lui confier. Le serveur ne connaît que ton e-mail, tes ordinateurs activés et
+la liste des skills, références et outils que tu ouvres. Le détail est dans
 [CONDITIONS.md](CONDITIONS.md) (brouillon).
 
 **Les règles**

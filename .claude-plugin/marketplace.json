@@ -8,7 +8,12 @@
     {
       "name": "base",
       "source": "./plugins/base",
-      "description": "Le socle de Studio 360D"
+      "description": "Le socle de Studio 360D : démarrer, ta marque et ton marché, la stratégie, les prompts, la génération d'images, les personnages et la passe de réalisme."
+    },
+    {
+      "name": "images",
+      "source": "./plugins/images",
+      "description": "Le pack Images de Studio 360D : pubs image, posts et carrousels, et visuels de produits pour la boutique, la pub ou les réseaux."
     }
   ]
 }

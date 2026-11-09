@@ -1,7 +1,7 @@
 {
   "name": "base",
-  "version": "0.1.3",
-  "description": "Le socle de Studio 360D : démarrer (installation, activation, premier essai) et la passe de réalisme.",
+  "version": "0.1.4",
+  "description": "Le socle de Studio 360D : démarrer, ta marque et ton marché, la stratégie, les prompts, la génération d'images, les personnages et la passe de réalisme.",
   "author": {
     "name": "Créateurs 360D"
   },
@@ -9,8 +9,9 @@
   "repository": "https://github.com/Boubacar41/studio-360d",
   "keywords": [
     "studio-360d",
-    "video",
     "ia",
-    "creation"
+    "creation",
+    "images",
+    "video"
   ]
 }

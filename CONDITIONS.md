@@ -34,15 +34,16 @@ entraîner le retrait de ton accès.
 ## 4. Ce qui t'appartient
 
 Ce que tu produis avec Studio 360D t'appartient : tes images, tes vidéos, tes textes, tes
-fichiers et ceux de tes clients. Rien de tes productions n'est envoyé au serveur. Tes fichiers
-restent sur ton ordinateur.
+fichiers et ceux de tes clients. Le serveur de Studio 360D ne reçoit ni tes créations ni tes
+fichiers. Quand tu génères une image, ton prompt et les images que tu joins partent chez le
+fournisseur que tu as choisi, avec ta clé, comme si tu l'utilisais toi-même.
 
 ## 5. Ce que le serveur garde, et combien de temps
 
 - Ton adresse e-mail de membre.
 - Tes ordinateurs activés : leur nom, le type, la version et l'architecture de leur système,
   leur date d'activation et de dernier accès.
-- Le journal de tes chargements : quel skill ou quel outil, quand, depuis quel ordinateur. **Il
+- Le journal de tes chargements : quel skill, quelle référence ou quel outil, quand, depuis quel ordinateur. **Il
   ne garde que tes 200 derniers chargements** ; les plus anciens s'effacent au fur et à mesure.
 - La version des présentes conditions que tu as acceptée, et sa date.
 

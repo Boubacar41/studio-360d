@@ -1,0 +1,20 @@
+{
+  "name": "images",
+  "version": "0.1.0",
+  "description": "Le pack Images de Studio 360D : pubs image, posts et carrousels, et visuels de produits pour la boutique, la pub ou les réseaux.",
+  "author": {
+    "name": "Créateurs 360D"
+  },
+  "homepage": "https://github.com/Boubacar41/studio-360d",
+  "repository": "https://github.com/Boubacar41/studio-360d",
+  "keywords": [
+    "studio-360d",
+    "ia",
+    "creation",
+    "images",
+    "video"
+  ],
+  "dependencies": [
+    "base"
+  ]
+}
