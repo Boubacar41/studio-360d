@@ -114,19 +114,33 @@ Windows comme ailleurs). Chaque fois :
 
 Ne touche jamais aux réglages du projet (le dossier `.claude` du dossier de travail).
 
-### Voie 1 : la commande `claude`, ou le programme de l'application
+### Voie 1 : la commande `claude`, ou le programme qui fait tourner ta session
 
-Dans l'onglet Code de l'application, la commande `claude` n'est en général **pas** disponible.
-Le programme de l'application, lui, l'est souvent, par la variable `CLAUDE_CODE_EXECPATH`.
+Dans l'onglet Code de l'application, la commande `claude` n'est en général **pas** disponible,
+et la variable `CLAUDE_CODE_EXECPATH` est souvent vide. Le programme de Claude Code qui fait
+tourner cette session, lui, est toujours là : on le retrouve en remontant de ta propre commande
+au programme qui l'a lancée. Ce n'est pas une fouille : c'est le seul endroit où tu regardes.
 
-1. Trouve le programme à utiliser, dans cet ordre :
+1. Trouve le programme à utiliser, dans cet ordre. Arrête-toi au premier dont `--version`
+   répond par un numéro suivi de `(Claude Code)` :
    - `claude --version` ;
-   - sinon, le programme de l'application : `"$CLAUDE_CODE_EXECPATH" --version` (outil Bash) ou
-     `& $env:CLAUDE_CODE_EXECPATH --version` (outil PowerShell).
+   - si la variable n'est pas vide : `"$CLAUDE_CODE_EXECPATH" --version` (outil Bash) ou
+     `& $env:CLAUDE_CODE_EXECPATH --version` (outil PowerShell) ;
+   - le programme qui fait tourner cette session. Sous Windows, avec l'outil PowerShell :
+     ```powershell
+     $p = $PID; for ($i = 0; $i -lt 12 -and $p; $i++) { $x = Get-CimInstance Win32_Process -Filter "ProcessId=$p"; if (-not $x) { break }; if ($x.Name -eq 'claude.exe' -and $x.ExecutablePath -and $x.ExecutablePath -notlike '*\WindowsApps\*') { $x.ExecutablePath; break }; $p = $x.ParentProcessId }
+     ```
+     Sous macOS et Linux, avec l'outil Bash :
+     ```bash
+     p=$$; for i in 1 2 3 4 5 6 7 8 9 10 11 12; do e=$(readlink "/proc/$p/exe" 2>/dev/null || ps -o comm= -p "$p" 2>/dev/null); case "$e" in */claude|*/claude/versions/*) echo "$e"; break;; esac; p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' '); [ -n "$p" ] && [ "$p" -gt 1 ] || break; done
+     ```
+     Il affiche un chemin : vérifie-le avec `& "<chemin>" --version` (PowerShell) ou
+     `"<chemin>" --version` (Bash). Ne lance jamais `--version` sur un autre programme que
+     celui-là : celui de l'application ouvrirait une fenêtre.
 
-   Si aucun ne répond (variable vide, commande absente ou en erreur), passe à la voie 2. Dans la
-   suite, `claude` désigne celui qui a répondu : remplace-le par `"$CLAUDE_CODE_EXECPATH"` ou
-   `& $env:CLAUDE_CODE_EXECPATH` s'il le faut.
+   Si aucun ne répond par `(Claude Code)`, passe à la voie 2. Dans la suite, `claude` désigne
+   celui qui a répondu : remplace-le par son chemin entre guillemets (`& "<chemin>"` sous
+   PowerShell, `"<chemin>"` sous Bash).
 2. Dis au membre : « Je vais installer Studio 360D, depuis le dépôt GitHub
    Boubacar41/studio-360d, pour toi seulement : les packs Base et Images, 11 skills. » Avec son accord, lance
    ces commandes, dans l'ordre :
