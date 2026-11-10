@@ -79,7 +79,9 @@ Résume-lui ces points avec tes mots, simplement, puis demande-lui s'il veut con
    contacter le serveur, si Studio 360D est activé. Sinon, tu lui proposeras de l'activer.
 3. **À chaque utilisation d'un skill** : le client télécharge depuis le serveur de Studio 360D
    la procédure à suivre et, si besoin, un programme. Il lance ce programme sur son
-   ordinateur, dans son dossier de travail, puis l'efface.
+   ordinateur, dans son dossier de travail, puis l'efface. Studio 360D autorise lui-même ses
+   propres commandes, celles du client et elles seules ; tout le reste suit son mode
+   d'autorisations.
 4. **Ce que le serveur connaît** : son adresse e-mail de membre, ses ordinateurs activés (nom,
    type, version et architecture du système), la liste des skills, références et outils qu'il
    ouvre (quand, depuis quel ordinateur) et la version des conditions qu'il a acceptée. Jamais

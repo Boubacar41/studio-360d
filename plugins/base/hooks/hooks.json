@@ -1,5 +1,5 @@
 {
-  "description": "Studio 360D : au démarrage d'une session, propose /base:demarrer si cet ordinateur n'est pas encore activé.",
+  "description": "Studio 360D : au démarrage d'une session, propose /base:demarrer si cet ordinateur n'est pas encore activé. Studio 360D : autorise sans redemander les seules commandes du client du studio, écrites comme ses procédures les écrivent ; toute autre commande suit tes autorisations.",
   "hooks": {
     "SessionStart": [
       {
@@ -16,6 +16,21 @@
               "--crochet"
             ],
             "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/client/garde.mjs"
+            ],
+            "timeout": 10
           }
         ]
       }
