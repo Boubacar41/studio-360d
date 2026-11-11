@@ -17,6 +17,7 @@ const SOURCE = [path.join(ICI, '..', 'plugins', 'base'), path.join(ICI, '..')]
   .find((d) => fs.existsSync(path.join(d, 'client', 'c360.mjs')));
 const {
   trouverPython, creerContexte, versSlash, principal, nodeAssezRecent, NODE_MIN, executerOutil, VERSION_CLIENT, pythonEnvironnement,
+  remplacerFichier, activerMiseAJourAutomatique, ErreurReglages,
 } = await import(pathToFileURL(path.join(SOURCE, 'client', 'c360.mjs')).href);
 
 const EMAIL = 'membre@exemple.fr';
@@ -157,9 +158,9 @@ function envClient() {
   return env;
 }
 
-function client(args, { dossierPlugin = plugin, donnees = data, env = envClient() } = {}) {
+function client(args, { dossierPlugin = plugin, donnees = data, env = envClient(), cwd = travail } = {}) {
   return new Promise((resoudre) => {
-    const p = spawn(process.execPath, [path.join(dossierPlugin, 'client', 'c360.mjs'), '--data', donnees, ...args], { cwd: travail, env });
+    const p = spawn(process.execPath, [path.join(dossierPlugin, 'client', 'c360.mjs'), '--data', donnees, ...args], { cwd, env });
     let stdout = '';
     let stderr = '';
     p.stdout.on('data', (d) => { stdout += d; });
@@ -517,7 +518,7 @@ test('le diagnostic dit l\'environnement, la longueur du dossier de données et 
     const autre = path.join(tmp, 'autre configuration');
     const dedans = path.join(autre, 'plugins', 'data', 'base-essai');
     fs.mkdirSync(dedans, { recursive: true });
-    ecrire(path.join(autre, 'settings.json'), { extraKnownMarketplaces: { 'studio-360d': { autoUpdate: true } } });
+    ecrire(path.join(autre, 'settings.json'), { extraKnownMarketplaces: { 'studio-360d': { source: { source: 'github', repo: 'exemple/studio' }, autoUpdate: true } } });
     assert.equal(await ligne(dedans), 'oui');
   } finally {
     fs.rmSync(reglages, { force: true });
@@ -527,6 +528,357 @@ test('le diagnostic dit l\'environnement, la longueur du dossier de données et 
   const r = await client(['diagnostic'], { donnees: vide });
   assert.match(r.stdout, /- Environnement : absent\n/);
   assert.match(r.stdout, /- Python : absent \(l'environnement du studio le pose\)/);
+});
+
+// ------------------------------------------------------------------ mises-a-jour : l'état, puis --activer
+
+// Checklist du 9 nov. : écrite par Claude pendant l'installation, la clé autoUpdate n'arrivait jamais. /base:demarrer
+// la propose maintenant par une question, et le client l'écrit lui-même. Chaque test a sa configuration d'essai,
+// trouvée par CLAUDE_CONFIG_DIR (DATA n'est pas dans <config>/plugins/data) : jamais celle de l'ordinateur.
+// Chaque protection a son test, qui échoue si on la retire (revue du 10 nov., mutations M1 à M8).
+const SECRET = 'valeur-secrete-de-test-0123456789';
+// V8 cite le début du texte dans « Unexpected token » : c'est cet extrait court qui ne doit jamais sortir.
+const EXTRAIT = SECRET.slice(0, 10);
+const ENTREE_COMPLETE = { source: { source: 'git', url: 'https://github.com/Boubacar41/studio-360d.git' }, autoUpdate: true };
+const BOM = '\uFEFF';
+
+/** Une configuration d'essai de Claude Code : avec plugins/known_marketplaces.json, comme après l'ajout d'un catalogue. */
+function configurationEssai(nom, { catalogues = '{}' } = {}) {
+  const d = path.join(tmp, 'configurations', nom);
+  fs.mkdirSync(d, { recursive: true });
+  if (catalogues !== null) {
+    fs.mkdirSync(path.join(d, 'plugins'), { recursive: true });
+    fs.writeFileSync(path.join(d, 'plugins', 'known_marketplaces.json'), catalogues);
+  }
+  return d;
+}
+
+const reglagesDe = (config) => path.join(config, 'settings.json');
+const lireTexte = (f) => fs.readFileSync(f, 'utf8');
+const majAuto = (args, config, options = {}) => client(['mises-a-jour', ...args], { env: { ...envClient(), CLAUDE_CONFIG_DIR: config }, ...options });
+const refus = (code) => Object.assign(new Error(`essai ${code}`), { code });
+const sansAttente = () => {};
+
+/** Rien du fichier de réglages dans ce que le client imprime ni dans sa dernière erreur notée. */
+function rienDuFichier(r, extraits = [SECRET, EXTRAIT]) {
+  const erreur = path.join(data, 'derniere-erreur.json');
+  const notee = fs.existsSync(erreur) ? lireTexte(erreur) : '';
+  for (const x of extraits) {
+    for (const [ou, s] of [['stdout', r.stdout], ['stderr', r.stderr], ['dernière erreur', notee]]) assert.ok(!s.includes(x), `${ou} contient « ${x} »`);
+  }
+}
+
+/** Aucun fichier temporaire laissé : seuls les fichiers attendus dans le dossier. */
+function seulement(dossier, attendus) {
+  assert.deepEqual(fs.readdirSync(dossier).sort(), [...attendus].sort(), `fichiers de ${dossier}`);
+}
+
+test('mises-a-jour : une ligne, l\'état (inconnu, non, oui), sans rien écrire ni rien imprimer du fichier', async () => {
+  const config = configurationEssai('etat');
+  const etatLu = async () => {
+    const r = await majAuto([], config);
+    assert.equal(r.code, 0, r.stderr);
+    assert.equal(r.stderr, '');
+    rienDuFichier(r, [SECRET, 'exemple/studio']);
+    return r.stdout;
+  };
+  assert.equal(await etatLu(), 'Mises à jour automatiques : inconnu\n');
+  seulement(config, ['plugins']);
+  const entree = (valeurs) => JSON.stringify({ env: { FAL_KEY: SECRET }, extraKnownMarketplaces: { 'studio-360d': valeurs } });
+  const source = { source: 'github', repo: 'exemple/studio' };
+  for (const [valeurs, attendu, texte = entree(valeurs)] of [
+    [{ source, autoUpdate: false }, 'non'],
+    [{ source, autoUpdate: true }, 'oui'],
+    // Sans source, l'entrée n'est pas faite : la lecture le dit comme l'écriture, qui la complète.
+    [{ autoUpdate: true }, 'non'],
+    // Un BOM de tête ne rend pas le fichier illisible.
+    [{ source, autoUpdate: true }, 'oui', `${BOM}${entree({ source, autoUpdate: true })}`],
+  ]) {
+    fs.writeFileSync(reglagesDe(config), texte);
+    assert.equal(await etatLu(), `Mises à jour automatiques : ${attendu}\n`, texte);
+    assert.equal(lireTexte(reglagesDe(config)), texte, 'fichier intact');
+  }
+});
+
+test('mises-a-jour --activer : autoUpdate posé, toutes les autres clés et entrées gardées, la source et les droits tels quels, rien d\'imprimé du fichier', async () => {
+  // known_marketplaces.json ne s'écrit pas : l'entrée des réglages passe avant lui (V10).
+  const texteConnus = JSON.stringify({ 'studio-360d': { source: { source: 'github', repo: 'exemple/connu' }, autoUpdate: false, installLocation: 'x' } });
+  const config = configurationEssai('garder', { catalogues: texteConnus });
+  const avant = {
+    env: { FAL_KEY: SECRET },
+    permissions: { allow: ['Bash(ls)'], deny: [] },
+    extraKnownMarketplaces: {
+      autre: { source: { source: 'github', repo: 'exemple/autre' }, autoUpdate: false },
+      'studio-360d': { source: { source: 'github', repo: 'exemple/studio' }, autoUpdate: false, cleInconnue: [1, 2] },
+      apres: { source: { source: 'directory', path: 'x' } },
+    },
+    model: 'essai',
+  };
+  fs.writeFileSync(reglagesDe(config), JSON.stringify(avant, null, 4));
+  // Des droits qui ne sont pas ceux d'un nouveau fichier (0o600) : ils doivent être relus, puis gardés.
+  if (process.platform !== 'win32') fs.chmodSync(reglagesDe(config), 0o640);
+
+  const r = await majAuto(['--activer'], config);
+  assert.equal(r.code, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /^Mises à jour automatiques : oui\./);
+  rienDuFichier(r, [SECRET, 'exemple/studio', 'exemple/autre', 'Bash(ls)']);
+  const attendu = structuredClone(avant);
+  attendu.extraKnownMarketplaces['studio-360d'].autoUpdate = true;
+  assert.equal(lireTexte(reglagesDe(config)), `${JSON.stringify(attendu, null, 2)}\n`, 'indentation de 2, saut de ligne final, ordre des clés gardé');
+  seulement(config, ['plugins', 'settings.json']);
+  if (process.platform !== 'win32') assert.equal(fs.statSync(reglagesDe(config)).mode & 0o777, 0o640, 'les droits du fichier sont gardés');
+  assert.equal(lireTexte(path.join(config, 'plugins', 'known_marketplaces.json')), texteConnus, 'known_marketplaces.json intact');
+  assert.equal((await majAuto([], config)).stdout, 'Mises à jour automatiques : oui\n');
+});
+
+test('mises-a-jour --activer : fichier absent, créé avec la seule entrée ; entrée absente ou sans source, complétée ; BOM gardé', async () => {
+  const config = configurationEssai('absents');
+  const seule = { extraKnownMarketplaces: { 'studio-360d': ENTREE_COMPLETE } };
+  let r = await majAuto(['--activer'], config);
+  assert.equal(r.code, 0, r.stdout + r.stderr);
+  assert.equal(lireTexte(reglagesDe(config)), `${JSON.stringify(seule, null, 2)}\n`);
+  seulement(config, ['plugins', 'settings.json']);
+
+  for (const [avant, apres] of [
+    [{ theme: 'dark' }, { theme: 'dark', extraKnownMarketplaces: { 'studio-360d': ENTREE_COMPLETE } }],
+    [{ extraKnownMarketplaces: {} }, seule],
+    [{ extraKnownMarketplaces: { autre: { source: { source: 'github', repo: 'exemple/autre' } } } },
+      { extraKnownMarketplaces: { autre: { source: { source: 'github', repo: 'exemple/autre' } }, 'studio-360d': ENTREE_COMPLETE } }],
+    // Une entrée sans source reçoit la nôtre, même déjà à true ; une entrée avec la sienne la garde (test précédent).
+    [{ extraKnownMarketplaces: { 'studio-360d': { autoUpdate: false } } }, { extraKnownMarketplaces: { 'studio-360d': { autoUpdate: true, source: ENTREE_COMPLETE.source } } }],
+    [{ extraKnownMarketplaces: { 'studio-360d': { autoUpdate: true } } }, { extraKnownMarketplaces: { 'studio-360d': { autoUpdate: true, source: ENTREE_COMPLETE.source } } }],
+  ]) {
+    fs.writeFileSync(reglagesDe(config), JSON.stringify(avant));
+    r = await majAuto(['--activer'], config);
+    assert.equal(r.code, 0, `${JSON.stringify(avant)} : ${r.stdout}${r.stderr}`);
+    assert.match(r.stdout, /^Mises à jour automatiques : oui\. /, JSON.stringify(avant));
+    assert.equal(lireTexte(reglagesDe(config)), `${JSON.stringify(apres, null, 2)}\n`, JSON.stringify(avant));
+  }
+
+  // Un BOM de tête (PowerShell 5.1, Bloc-notes) : retiré pour lire, remis à l'écriture.
+  fs.writeFileSync(reglagesDe(config), `${BOM}{ "theme": "dark" }\n`);
+  r = await majAuto(['--activer'], config);
+  assert.equal(r.code, 0, r.stdout + r.stderr);
+  assert.equal(lireTexte(reglagesDe(config)), `${BOM}${JSON.stringify({ theme: 'dark', extraKnownMarketplaces: { 'studio-360d': ENTREE_COMPLETE } }, null, 2)}\n`);
+});
+
+test('mises-a-jour --activer : une entrée créée prend la source que connaît known_marketplaces.json', async () => {
+  const connu = { source: 'github', repo: 'exemple/connu' };
+  const texteConnus = JSON.stringify({ 'studio-360d': { source: connu, installLocation: 'x' } });
+  const config = configurationEssai('source connue', { catalogues: texteConnus });
+  let r = await majAuto(['--activer'], config);
+  assert.equal(r.code, 0, r.stdout + r.stderr);
+  assert.deepEqual(JSON.parse(lireTexte(reglagesDe(config))), { extraKnownMarketplaces: { 'studio-360d': { source: connu, autoUpdate: true } } });
+  fs.writeFileSync(reglagesDe(config), JSON.stringify({ extraKnownMarketplaces: { 'studio-360d': { autoUpdate: false } } }));
+  r = await majAuto(['--activer'], config);
+  assert.equal(r.code, 0, r.stdout + r.stderr);
+  assert.deepEqual(JSON.parse(lireTexte(reglagesDe(config))), { extraKnownMarketplaces: { 'studio-360d': { autoUpdate: true, source: connu } } });
+  assert.equal(lireTexte(path.join(config, 'plugins', 'known_marketplaces.json')), texteConnus, 'known_marketplaces.json intact');
+  // Une source illisible dans known_marketplaces.json : la nôtre.
+  const autre = configurationEssai('source illisible', { catalogues: JSON.stringify({ 'studio-360d': { source: 'texte' } }) });
+  assert.equal((await majAuto(['--activer'], autre)).code, 0);
+  assert.deepEqual(JSON.parse(lireTexte(reglagesDe(autre))), { extraKnownMarketplaces: { 'studio-360d': ENTREE_COMPLETE } });
+});
+
+test('mises-a-jour --activer : JSON invalide, racine ou entrée qui n\'est pas un objet : rien n\'est écrit, code 1, rien du fichier imprimé', async () => {
+  const config = configurationEssai('invalides');
+  for (const contenu of [
+    // Une valeur sans guillemets : le message de JSON.parse cite alors le début du texte (« Unexpected token »).
+    `{"env": {"FAL_KEY": ${SECRET}}}`,
+    `{ "env": { "FAL_KEY": "${SECRET}" }, oups`,
+    '',
+    `[{ "FAL_KEY": "${SECRET}" }]`,
+    'null',
+    `"${SECRET}"`,
+    JSON.stringify({ env: { FAL_KEY: SECRET }, extraKnownMarketplaces: [SECRET] }),
+    JSON.stringify({ env: { FAL_KEY: SECRET }, extraKnownMarketplaces: { 'studio-360d': SECRET } }),
+  ]) {
+    fs.writeFileSync(reglagesDe(config), contenu);
+    const r = await majAuto(['--activer'], config);
+    assert.equal(r.code, 1, `${contenu} : ${r.stdout}`);
+    assert.match(r.stdout, /rien n'a été changé/);
+    assert.match(r.stdout, /Ne relance pas cette commande dans cette session/);
+    rienDuFichier(r);
+    assert.equal(lireTexte(reglagesDe(config)), contenu, 'fichier intact');
+    seulement(config, ['plugins', 'settings.json']);
+  }
+});
+
+test('mises-a-jour --activer : un fichier en lecture seule est refusé (code 1), intact', async () => {
+  const config = configurationEssai('lecture seule');
+  const texte = JSON.stringify({ env: { FAL_KEY: SECRET } });
+  fs.writeFileSync(reglagesDe(config), texte);
+  fs.chmodSync(reglagesDe(config), 0o444);
+  try {
+    const r = await majAuto(['--activer'], config);
+    assert.equal(r.code, 1, r.stdout);
+    // Sous Windows, sans ce contrôle, le renommage échouerait aussi : seul le message dit pourquoi.
+    assert.match(r.stdout, /n'a pas pu être écrit \(fichier en lecture seule\) : rien n'a été changé/);
+    rienDuFichier(r);
+    assert.equal(lireTexte(reglagesDe(config)), texte);
+    seulement(config, ['plugins', 'settings.json']);
+  } finally {
+    fs.chmodSync(reglagesDe(config), 0o644);
+  }
+});
+
+test('mises-a-jour --activer, écriture : renommage refusé, fichier intact et aucun temporaire ; refus passager réessayé, environ 5 s au plus', () => {
+  const config = configurationEssai('renommage');
+  const f = reglagesDe(config);
+  const avant = '{ "theme": "dark" }\n';
+  fs.writeFileSync(f, avant);
+  // Refus durable : réessayé, puis abandonné ; le fichier n'a pas bougé et le temporaire est effacé.
+  const attentes = [];
+  let essais = 0;
+  assert.throws(
+    () => remplacerFichier(f, 'nouveau\n', 0o644, { renommerFichier: () => { essais += 1; throw refus('EPERM'); }, attendre: (ms) => attentes.push(ms) }),
+    (e) => e instanceof ErreurReglages && e.raison === 'ecriture' && e.detail === 'EPERM',
+  );
+  assert.equal(lireTexte(f), avant);
+  seulement(config, ['plugins', 'settings.json']);
+  assert.equal(essais, attentes.length + 1);
+  const total = attentes.reduce((a, b) => a + b, 0);
+  assert.ok(total >= 4000 && total <= 6000, `${total} ms de réessais`);
+  // Refus passager : deux EBUSY, puis le vrai renommage aboutit.
+  essais = 0;
+  remplacerFichier(f, 'nouveau\n', 0o644, {
+    renommerFichier: (de, vers) => { essais += 1; if (essais <= 2) throw refus('EBUSY'); fs.renameSync(de, vers); },
+    attendre: sansAttente,
+  });
+  assert.equal(essais, 3);
+  assert.equal(lireTexte(f), 'nouveau\n');
+  seulement(config, ['plugins', 'settings.json']);
+  // Une autre erreur ne se réessaie pas.
+  essais = 0;
+  assert.throws(() => remplacerFichier(f, 'x\n', 0o644, { renommerFichier: () => { essais += 1; throw refus('ENOSPC'); }, attendre: sansAttente }), ErreurReglages);
+  assert.equal(essais, 1);
+  assert.equal(lireTexte(f), 'nouveau\n');
+});
+
+test('mises-a-jour --activer, atomicité : quand le renommage échoue, ni les réglages ni un nouveau fichier ne sont écrits', () => {
+  const config = configurationEssai('atomicite');
+  const echec = { renommerFichier: () => { throw refus('EPERM'); }, attendre: sansAttente };
+  assert.throws(() => activerMiseAJourAutomatique(config, echec), (e) => e instanceof ErreurReglages && e.raison === 'ecriture');
+  seulement(config, ['plugins']);
+  const texte = JSON.stringify({ env: { FAL_KEY: SECRET } });
+  fs.writeFileSync(reglagesDe(config), texte);
+  assert.throws(() => activerMiseAJourAutomatique(config, echec), (e) => e instanceof ErreurReglages && e.raison === 'ecriture');
+  assert.equal(lireTexte(reglagesDe(config)), texte);
+  seulement(config, ['plugins', 'settings.json']);
+  assert.equal(activerMiseAJourAutomatique(config), 'activees');
+});
+
+test('mises-a-jour --activer : idempotent ; déjà activé, le fichier n\'est pas réécrit', async () => {
+  const config = configurationEssai('deux fois');
+  assert.equal((await majAuto(['--activer'], config)).code, 0);
+  const premier = lireTexte(reglagesDe(config));
+  const r = await majAuto(['--activer'], config);
+  assert.equal(r.code, 0);
+  assert.match(r.stdout, /^Mises à jour automatiques : oui, déjà activées\./);
+  assert.equal(lireTexte(reglagesDe(config)), premier);
+  // Déjà activé dans un fichier écrit à sa façon : ni son indentation ni sa date ne changent.
+  const sienne = JSON.stringify({ extraKnownMarketplaces: { 'studio-360d': { source: { source: 'github', repo: 'exemple/studio' }, autoUpdate: true } } }, null, 4);
+  fs.writeFileSync(reglagesDe(config), sienne);
+  const ancienne = new Date('2026-01-02T03:04:05Z');
+  fs.utimesSync(reglagesDe(config), ancienne, ancienne);
+  assert.equal((await majAuto(['--activer'], config)).code, 0);
+  assert.equal(lireTexte(reglagesDe(config)), sienne);
+  assert.equal(fs.statSync(reglagesDe(config)).mtimeMs, ancienne.getTime());
+});
+
+test('mises-a-jour : la configuration est celle qui contient DATA, sinon CLAUDE_CONFIG_DIR ; sans liste des catalogues, refus ; les réglages du projet ne bougent pas', async () => {
+  const parDonnees = configurationEssai('par DATA');
+  const donnees = path.join(parDonnees, 'plugins', 'data', 'base-studio-360d');
+  fs.mkdirSync(donnees, { recursive: true });
+  const parVariable = configurationEssai('par la variable');
+  const projet = path.join(tmp, 'projet d\'essai');
+  fs.mkdirSync(path.join(projet, '.claude'), { recursive: true });
+  const reglagesProjet = { 'settings.json': '{ "projet": true }\n', 'settings.local.json': '{ "local": true }\n' };
+  for (const [f, t] of Object.entries(reglagesProjet)) fs.writeFileSync(path.join(projet, '.claude', f), t);
+  // Un DATA rangé dans le .claude d'un projet (le client y note sa dernière erreur, comme dans tout DATA).
+  const dansLeProjet = path.join(projet, '.claude', 'plugins', 'data', 'base-studio-360d');
+  fs.mkdirSync(dansLeProjet, { recursive: true });
+  const projetIntact = () => {
+    for (const [f, t] of Object.entries(reglagesProjet)) assert.equal(lireTexte(path.join(projet, '.claude', f)), t, f);
+    seulement(path.join(projet, '.claude'), [...Object.keys(reglagesProjet), 'plugins']);
+    seulement(path.join(projet, '.claude', 'plugins'), ['data']);
+  };
+  const env = { ...envClient(), CLAUDE_CONFIG_DIR: parVariable };
+
+  let r = await client(['mises-a-jour', '--activer'], { donnees, cwd: projet, env });
+  assert.equal(r.code, 0, r.stdout + r.stderr);
+  assert.deepEqual(JSON.parse(lireTexte(reglagesDe(parDonnees))), { extraKnownMarketplaces: { 'studio-360d': ENTREE_COMPLETE } });
+  assert.ok(!fs.existsSync(reglagesDe(parVariable)), 'la configuration qui contient DATA passe avant la variable');
+  assert.equal((await client(['mises-a-jour'], { donnees, cwd: projet, env })).stdout, 'Mises à jour automatiques : oui\n');
+
+  r = await client(['mises-a-jour', '--activer'], { donnees: data, cwd: projet, env });
+  assert.equal(r.code, 0, r.stdout + r.stderr);
+  assert.deepEqual(JSON.parse(lireTexte(reglagesDe(parVariable))), { extraKnownMarketplaces: { 'studio-360d': ENTREE_COMPLETE } });
+  projetIntact();
+
+  // DATA dans le .claude du projet : ce n'est pas une configuration de Claude Code, ses réglages ne bougent pas.
+  r = await client(['mises-a-jour', '--activer'], { donnees: dansLeProjet, cwd: projet, env });
+  assert.equal(r.code, 1, r.stdout);
+  assert.match(r.stdout, /n'est pas la configuration de Claude Code[^\n]*: rien n'a été changé/);
+  projetIntact();
+  // Une variable qui vise un dossier sans liste des catalogues, ou absent : refus, et rien n'est créé.
+  const sansCatalogues = configurationEssai('sans catalogues', { catalogues: null });
+  const absente = path.join(tmp, 'configurations', 'absente');
+  for (const config of [sansCatalogues, absente]) {
+    r = await majAuto(['--activer'], config);
+    assert.equal(r.code, 1, `${config} : ${r.stdout}`);
+    assert.match(r.stdout, /n'est pas la configuration de Claude Code/);
+  }
+  seulement(sansCatalogues, []);
+  assert.ok(!fs.existsSync(absente), 'le dossier de configuration n\'est jamais créé');
+});
+
+test('mises-a-jour --activer : un fichier de réglages qui est un lien reste un lien, sa cible reçoit le réglage', async (t) => {
+  const config = configurationEssai('lien');
+  const dossierCible = path.join(tmp, 'configurations', 'dotfiles');
+  fs.mkdirSync(dossierCible, { recursive: true });
+  const cible = path.join(dossierCible, 'settings.json');
+  fs.writeFileSync(cible, '{ "theme": "dark" }\n');
+  try {
+    fs.symlinkSync(cible, reglagesDe(config), 'file');
+  } catch (e) {
+    t.skip(`lien symbolique impossible ici (${e.code})`);
+    return;
+  }
+  const r = await majAuto(['--activer'], config);
+  assert.equal(r.code, 0, r.stdout + r.stderr);
+  assert.ok(fs.lstatSync(reglagesDe(config)).isSymbolicLink(), 'le lien est gardé');
+  assert.deepEqual(JSON.parse(lireTexte(cible)), { theme: 'dark', extraKnownMarketplaces: { 'studio-360d': ENTREE_COMPLETE } });
+  seulement(dossierCible, ['settings.json']);
+});
+
+test('mises-a-jour --activer : un lien cassé est refusé (code 1) et reste un lien, sa cible n\'est pas créée', async () => {
+  const casse = configurationEssai('lien casse');
+  const manquante = path.join(tmp, 'configurations', 'cible manquante');
+  try {
+    fs.symlinkSync(manquante, reglagesDe(casse), 'file');
+  } catch (e) {
+    // Sous Windows sans mode développeur, une jonction (lien de dossier, sans droit particulier) tient le même rôle.
+    if (process.platform !== 'win32' || e.code !== 'EPERM') throw e;
+    fs.symlinkSync(manquante, reglagesDe(casse), 'junction');
+  }
+  const r = await majAuto(['--activer'], casse);
+  assert.equal(r.code, 1, r.stdout);
+  assert.match(r.stdout, /n'a pas pu être lu \(lien symbolique cassé\) : rien n'a été changé/);
+  assert.ok(fs.lstatSync(reglagesDe(casse)).isSymbolicLink(), 'le lien cassé reste un lien');
+  assert.ok(!fs.existsSync(manquante), 'sa cible n\'est pas créée');
+  seulement(casse, ['plugins', 'settings.json']);
+});
+
+test('mises-a-jour : une option inconnue est une faute d\'usage (code 2) et rien n\'est écrit ; l\'aide cite la commande', async () => {
+  const config = configurationEssai('usage');
+  for (const args of [['--active'], ['oui'], ['--activer', 'oui']]) {
+    const r = await majAuto(args, config);
+    assert.equal(r.code, 2, args.join(' '));
+    assert.match(r.stdout, /mises-a-jour \[--activer\]/);
+    seulement(config, ['plugins']);
+  }
+  assert.match((await client(['aide'])).stdout, / mises-a-jour \[--activer\]\n/);
 });
 
 /** Le premier fichier de ce nom dans le PATH du test, ou null. */

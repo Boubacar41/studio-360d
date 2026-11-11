@@ -92,29 +92,9 @@ Résume-lui ces points avec tes mots, simplement, puis demande-lui s'il veut con
    sans terminal ; sous Linux, un mot de passe peut être demandé pour une bibliothèque du
    système, si elle manque), son studio, son profil et une première image, dont il annonce
    le prix avant. Générer des images demande un compte payant chez un fournisseur d'images
-   (fal.ai par défaut), que le membre crée quand `/base:demarrer` le lui propose.
-6. **Les mises à jour arrivent seules** : le contenu des packs pourra changer sans nouvelle
-   demande de sa part.
-
-### Avant de toucher au fichier de réglages
-
-La fin des deux voies (les mises à jour automatiques) modifie le fichier de réglages de
-l'utilisateur, `~/.claude/settings.json` (dans le dossier `.claude` de son dossier personnel, sous
-Windows comme ailleurs). Chaque fois :
-
-1. Lis le fichier. **S'il n'est pas un JSON valide, ne le modifie pas** : montre le problème au
-   membre ; les packs marchent quand même, sans mises à jour automatiques.
-2. Fais d'abord une copie à côté : `settings.json.avant-studio-360d`. Si une copie de ce nom
-   existe déjà, garde-la et ajoute la date au nom de la nouvelle.
-3. Change seulement ce qui est dit **sans rien retirer** : garde toutes ses autres clés et
-   toutes les autres entrées de `extraKnownMarketplaces`.
-4. Selon le mode d'autorisations de l'application, Claude Code affiche ou non une demande de
-   confirmation pour ce fichier : en mode Auto, souvent aucune. Ne l'annonce donc pas comme
-   certaine. L'accord qui compte est celui que tu as demandé au membre ; si une demande
-   s'affiche, dis-lui qu'il l'accepte s'il est d'accord avec le changement que tu lui as
-   décrit.
-
-Ne touche jamais aux réglages du projet (le dossier `.claude` du dossier de travail).
+   (fal.ai par défaut), que le membre crée quand `/base:demarrer` le lui propose. Enfin, il lui
+   propose que les packs se mettent à jour seuls : leur contenu pourra alors changer sans
+   nouvelle demande de sa part.
 
 ### Voie 1 : la commande `claude`, ou le programme qui fait tourner ta session
 
@@ -155,19 +135,8 @@ au programme qui l'a lancée. Ce n'est pas une fouille : c'est le seul endroit o
    Claude Code passe par SSH quand l'ordinateur a une clé GitHub, et les mises à jour peuvent
    échouer chez qui n'en a pas. Si une commande échoue, montre l'erreur au membre et passe à la
    voie 2.
-3. **Les mises à jour automatiques.** Pour un catalogue comme celui-ci, Claude Code les laisse
-   désactivées, et la commande réécrit l'entrée `studio-360d` de `extraKnownMarketplaces` dans
-   le fichier de réglages : un `"autoUpdate": true` déjà présent **disparaît**. Relis donc
-   l'entrée après les commandes et propose au membre d'y ajouter `"autoUpdate": true`, en
-   suivant « Avant de toucher au fichier de réglages » et en gardant la source telle que la
-   commande l'a écrite. Rappelle-lui ce que ça veut dire : le contenu des packs pourra changer
-   sans nouvelle demande. Si l'entrée est absente, ajoute-la en entier :
-   ```json
-   "studio-360d": {
-     "source": { "source": "git", "url": "https://github.com/Boubacar41/studio-360d.git" },
-     "autoUpdate": true
-   }
-   ```
+3. **Les mises à jour automatiques** se proposent ensuite dans `/base:demarrer` : ne modifie pas
+   le fichier de réglages pendant l'installation.
 4. Passe à « Vérifier l'installation ».
 
 ### Voie 2 : le menu de l'application
@@ -180,7 +149,7 @@ fois où tu peux employer ce mot.
 
 Le catalogue contient les packs Base et Images, 11 skills. Commence par lui dire : « Installe chaque pack,
 Base d'abord. Quand tu verras le message "… est installé et prêt à être utilisé" pour le
-dernier, reviens ici et dis-moi "c'est installé" : j'aurai encore une chose à te proposer. »
+dernier, reviens ici et dis-moi "c'est installé" : on vérifiera ensemble que tout est là. »
 
 1. Dans la zone de saisie, tape `/plugin` et valide : la fenêtre **Plugins** des Paramètres
    s'ouvre. En haut, on voit « Les vôtres », « Découvrir », un champ « Rechercher » et un bouton
@@ -203,10 +172,8 @@ n'apparaît dans « Les vôtres » qu'une fois installé.
 
 Quand il revient :
 
-8. **Les mises à jour automatiques** : le menu ne les active pas. Propose-les comme à la voie 1,
-   point 3 : relis l'entrée `studio-360d` du fichier de réglages et ajoutes-y
-   `"autoUpdate": true`, avec son accord et en suivant « Avant de toucher au fichier de
-   réglages ».
+8. **Les mises à jour automatiques** se proposent ensuite dans `/base:demarrer` : ne modifie pas
+   le fichier de réglages pendant l'installation.
 9. Passe à « Vérifier l'installation ».
 
 ### Vérifier l'installation
@@ -239,6 +206,10 @@ Après quoi, les skills s'ouvrent d'eux-mêmes quand la demande du membre s'y pr
 - **À chaque utilisation d'un skill**, il télécharge depuis le serveur de Studio 360D la
   procédure à suivre et, si besoin, un programme. Le programme tourne dans le dossier de
   travail du membre, puis le client l'efface.
+- **Avec l'accord du membre**, quand `/base:demarrer` le lui propose, il active les mises à jour
+  automatiques de Studio 360D dans le fichier de réglages de l'utilisateur de Claude Code : il y
+  change ce seul réglage, garde tout le reste et n'en affiche rien. Il ne touche jamais aux
+  réglages d'un projet.
 - **Il envoie au serveur** : l'adresse e-mail de membre et la version des conditions acceptée
   (à l'activation), le nom de l'ordinateur, le type, la version et l'architecture de son
   système, la clé d'appareil, et le nom de chaque skill, référence ou outil demandé. Le serveur tient le

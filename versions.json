@@ -1,10 +1,10 @@
 {
   "base": {
-    "version": "0.1.5",
-    "empreinte": "be65e9a0a5ba9fd39971dcffb4bba535262b0e606ba3421753a74e6a7511a6ea"
+    "version": "0.1.6",
+    "empreinte": "dc9e316d21c85f56fdcde428701ed8eded4790163df490e466d8c3e752fb3290"
   },
   "images": {
-    "version": "0.1.1",
-    "empreinte": "b0338ab76e726dbc600822e25a74fc1ffef516e6a0af830ace2cf4a19845127d"
+    "version": "0.1.2",
+    "empreinte": "b6608a8371e27a8d9ed2e7e2928f081a2f3b0e05b7837e832b915e836d56351f"
   }
 }

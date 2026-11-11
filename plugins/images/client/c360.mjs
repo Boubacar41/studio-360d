@@ -17,6 +17,12 @@
 //                                   courant avec l'environnement du studio, puis efface sa copie
 //   nettoyer                        efface les dossiers d'exécution orphelins
 //   diagnostic                      rapport de panne à coller dans l'Entraide (ni clé, ni jeton, ni e-mail)
+//   mises-a-jour [--activer]        une ligne : les packs se mettent-ils à jour seuls (oui, non, inconnu) ;
+//                                   --activer l'écrit dans <config>/settings.json, les réglages de l'utilisateur
+//                                   (jamais ceux d'un projet), sans rien changer d'autre ni rien en imprimer.
+//                                   Codes : 0 fait (ou déjà fait) ; 1 rien n'a été changé (dossier qui n'est pas une
+//                                   configuration de Claude Code, fichier illisible, d'une autre forme, en lecture
+//                                   seule ou impossible à écrire) ; 2 faute d'usage, comme pour activer.
 //
 // Fichiers, dans le dossier de données (--data, sinon CLAUDE_PLUGIN_DATA, sinon
 // ~/.claude/plugins/data/base-studio-360d ; celui d'un pack est ramené au dossier voisin de base) :
@@ -38,6 +44,8 @@ const PLUGIN_SOCLE = 'base';
 const OUTIL_ENVIRONNEMENT = 'environnement';
 /** Le nom du catalogue dans les réglages de Claude Code (ligne « Mises à jour automatiques »). */
 const CATALOGUE = 'studio-360d';
+/** La source qu'écrit `claude plugin marketplace add https://github.com/Boubacar41/studio-360d` (adresse en https, U24). */
+const SOURCE_CATALOGUE = { source: 'git', url: 'https://github.com/Boubacar41/studio-360d.git' };
 /** Longueur maximale du dossier de données sous Windows (mesure V7 : chemins posés par l'environnement). */
 export const LONGUEUR_DONNEES_MAX = 115;
 /** Version majeure minimale de Node (décision du 1er nov. 2026 : Node 20 n'est plus maintenu). */
@@ -117,9 +125,10 @@ function fichier(ctx, nom) {
   return path.join(ctx.donnees, nom);
 }
 
+/** Un JSON lu, ou null ; un BOM de tête (PowerShell 5.1, Bloc-notes) ne le rend pas illisible. */
 function lireJSONFichier(p) {
   try {
-    return JSON.parse(fs.readFileSync(p, 'utf8'));
+    return JSON.parse(fs.readFileSync(p, 'utf8').replace(/^\uFEFF/, ''));
   } catch {
     return null;
   }
@@ -879,23 +888,196 @@ function dossierConfiguration(ctx) {
   return process.env.CLAUDE_CONFIG_DIR ? path.resolve(process.env.CLAUDE_CONFIG_DIR) : path.join(os.homedir(), '.claude');
 }
 
+const estObjet = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
+
 function entree(objet, cle) {
-  const estObjet = (x) => x !== null && typeof x === 'object' && !Array.isArray(x);
   return estObjet(objet) && Object.hasOwn(objet, cle) && estObjet(objet[cle]) ? objet[cle] : null;
 }
 
 /**
  * Mise à jour automatique du catalogue (V10) : « oui », « non » ou « inconnu ». Seul autoUpdate de
  * l'entrée studio-360d est regardé, d'abord dans settings.json (extraKnownMarketplaces), puis dans
- * plugins/known_marketplaces.json ; une entrée sans la clé vaut « non ». Rien d'autre n'est gardé
- * ni imprimé.
+ * plugins/known_marketplaces.json ; une entrée sans la clé vaut « non ». Une entrée des réglages sans
+ * source vaut « non » aussi, comme pour --activer, qui la complète. Rien d'autre n'est gardé ni imprimé.
  */
 export function miseAJourAutomatique(dossierConfig) {
   const reglages = entree(entree(lireJSONFichier(path.join(dossierConfig, 'settings.json')), 'extraKnownMarketplaces'), CATALOGUE);
-  if (reglages && typeof reglages.autoUpdate === 'boolean') return reglages.autoUpdate ? 'oui' : 'non';
+  if (reglages && typeof reglages.autoUpdate === 'boolean') return reglages.autoUpdate && Object.hasOwn(reglages, 'source') ? 'oui' : 'non';
   const connu = entree(lireJSONFichier(path.join(dossierConfig, 'plugins', 'known_marketplaces.json')), CATALOGUE);
   if (connu && typeof connu.autoUpdate === 'boolean') return connu.autoUpdate ? 'oui' : 'non';
   return reglages || connu ? 'non' : 'inconnu';
+}
+
+/**
+ * Une erreur de mises-a-jour --activer : rien n'a été écrit. Son message est le nôtre, jamais celui de JSON.parse,
+ * qui cite le début du texte lu (un fichier de réglages peut contenir des secrets).
+ */
+export class ErreurReglages extends Error {
+  /** @param {'configuration' | 'lecture' | 'json' | 'forme' | 'ecriture'} raison @param {string} detail */
+  constructor(raison, detail) {
+    super(`${raison} : ${detail}`);
+    this.raison = raison;
+    this.detail = detail;
+  }
+}
+
+/** Les attentes entre deux essais de renommage : environ 5 s en tout (antivirus, OneDrive, indexation sous Windows). */
+const ATTENTES_RENOMMAGE_MS = [100, 200, 400, 800, 1000, 1200, 1300];
+const ERREURS_PASSAGERES = new Set(['EPERM', 'EACCES', 'EBUSY']);
+
+function attendreMs(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/** Renomme, en réessayant tant que le fichier est tenu par un autre programme. */
+function renommer(de, vers, { renommerFichier = fs.renameSync, attendre = attendreMs } = {}) {
+  for (let essai = 0; ; essai++) {
+    try {
+      renommerFichier(de, vers);
+      return;
+    } catch (e) {
+      if (essai >= ATTENTES_RENOMMAGE_MS.length || !ERREURS_PASSAGERES.has(e && e.code)) throw e;
+      attendre(ATTENTES_RENOMMAGE_MS[essai]);
+    }
+  }
+}
+
+/**
+ * Écrit `contenu` à la place de `cible`, d'un coup : fichier temporaire dans le même dossier, écrit jusqu'au disque,
+ * puis renommé ; en cas d'échec, le temporaire est effacé et `cible` reste intact. Les droits donnés (`mode`) sont
+ * posés sur le temporaire, donc gardés.
+ * @param {{ renommerFichier?: Function, attendre?: Function }} [outils] pour les tests : le renommage et l'attente
+ * @throws {ErreurReglages} raison « ecriture »
+ */
+export function remplacerFichier(cible, contenu, mode, outils = {}) {
+  const tmp = path.join(path.dirname(cible), `.${path.basename(cible)}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`);
+  try {
+    const fd = fs.openSync(tmp, 'wx', mode);
+    try {
+      fs.writeFileSync(fd, contenu);
+      fs.fsyncSync(fd);
+    } finally {
+      fs.closeSync(fd);
+    }
+    if (process.platform !== 'win32') fs.chmodSync(tmp, mode);
+    renommer(tmp, cible, outils);
+  } catch (e) {
+    fs.rmSync(tmp, { force: true });
+    throw new ErreurReglages('ecriture', (e && e.code) || 'erreur inconnue');
+  }
+}
+
+/**
+ * mises-a-jour --activer : `autoUpdate: true` sur l'entrée studio-360d de extraKnownMarketplaces, dans
+ * <config>/settings.json, les réglages de l'utilisateur.
+ * - Le dossier de configuration doit être celui de Claude Code : sans <config>/plugins/known_marketplaces.json (que
+ *   Claude Code écrit en ajoutant un catalogue), refus, et aucun dossier n'est créé. Un dossier `.claude` de projet
+ *   n'en a pas.
+ * - Toutes les autres clés et entrées restent, la source existante comprise. Entrée absente : l'entrée complète, avec la
+ *   source que connaît known_marketplaces.json s'il en a une, sinon la nôtre ; entrée sans source, de même ; fichier
+ *   absent, créé avec cette seule entrée.
+ * - Un BOM de tête est retiré à la lecture et remis à l'écriture. Déjà activé : rien n'est réécrit (ni l'indentation ni
+ *   la date du fichier ne changent). Un lien symbolique reste un lien : sa cible est écrite ; un lien cassé est refusé.
+ * - known_marketplaces.json ne s'écrit pas : l'entrée des réglages passe avant lui (V10 ; documentation de Claude Code,
+ *   « Which marketplaces and plugins auto-update »). Rien du fichier n'est gardé ni imprimé.
+ * - Limite acceptée : JSON.parse arrondit un entier de plus de 15 chiffres, met les clés numériques en tête et garde
+ *   la dernière d'une clé en double.
+ * @param {{ renommerFichier?: Function, attendre?: Function }} [outils] pour les tests (voir remplacerFichier)
+ * @returns {'activees' | 'deja'}
+ * @throws {ErreurReglages} et alors rien n'a été écrit
+ */
+export function activerMiseAJourAutomatique(dossierConfig, outils = {}) {
+  const connus = path.join(dossierConfig, 'plugins', 'known_marketplaces.json');
+  if (!fs.existsSync(connus)) throw new ErreurReglages('configuration', 'pas de plugins/known_marketplaces.json');
+  const chemin = path.join(dossierConfig, 'settings.json');
+  let cible = chemin;
+  let texte = null;
+  let mode = 0o600;
+  let present = true;
+  try {
+    fs.lstatSync(chemin);
+  } catch (e) {
+    if (!e || e.code !== 'ENOENT') throw new ErreurReglages('lecture', (e && e.code) || 'erreur inconnue');
+    present = false;
+  }
+  if (present) {
+    try {
+      cible = fs.realpathSync(chemin);
+      texte = fs.readFileSync(cible, 'utf8');
+      mode = fs.statSync(cible).mode & 0o777;
+    } catch (e) {
+      throw new ErreurReglages('lecture', e && e.code === 'ENOENT' ? 'lien symbolique cassé' : (e && e.code) || 'erreur inconnue');
+    }
+  }
+  const bom = texte !== null && texte.startsWith('\uFEFF');
+  let reglages = {};
+  if (texte !== null) {
+    try {
+      reglages = JSON.parse(bom ? texte.slice(1) : texte);
+    } catch {
+      throw new ErreurReglages('json', 'pas un JSON valide');
+    }
+    if (!estObjet(reglages)) throw new ErreurReglages('forme', 'le fichier n\'est pas un objet JSON');
+  }
+  const catalogues = Object.hasOwn(reglages, 'extraKnownMarketplaces') ? reglages.extraKnownMarketplaces : {};
+  if (!estObjet(catalogues)) throw new ErreurReglages('forme', 'extraKnownMarketplaces n\'est pas un objet');
+  const actuelle = Object.hasOwn(catalogues, CATALOGUE) ? catalogues[CATALOGUE] : undefined;
+  if (actuelle !== undefined && !estObjet(actuelle)) throw new ErreurReglages('forme', `l'entrée ${CATALOGUE} n'est pas un objet`);
+  if (actuelle && actuelle.autoUpdate === true && Object.hasOwn(actuelle, 'source')) return 'deja';
+  if (texte !== null && !(mode & 0o200)) throw new ErreurReglages('ecriture', 'fichier en lecture seule');
+
+  const connue = entree(lireJSONFichier(connus), CATALOGUE);
+  const source = () => structuredClone(connue && estObjet(connue.source) ? connue.source : SOURCE_CATALOGUE);
+  if (actuelle) {
+    actuelle.autoUpdate = true;
+    if (!Object.hasOwn(actuelle, 'source')) actuelle.source = source();
+  } else {
+    catalogues[CATALOGUE] = { source: source(), autoUpdate: true };
+  }
+  if (!Object.hasOwn(reglages, 'extraKnownMarketplaces')) reglages.extraKnownMarketplaces = catalogues;
+  const contenu = `${bom ? '\uFEFF' : ''}${JSON.stringify(reglages, null, 2)}\n`;
+  remplacerFichier(cible, contenu, mode, outils);
+  return 'activees';
+}
+
+const SUITE_REGLAGES_INTACTS =
+  'Consigne pour Claude : dis au membre, en une phrase, que les mises à jour automatiques n\'ont pas pu être activées et ' +
+  'que Studio 360D marche quand même, sans elles. Ne relance pas cette commande dans cette session. N\'ouvre pas le ' +
+  'fichier de réglages, ne le corrige pas et n\'en montre rien : il peut contenir des secrets.';
+
+/** mises-a-jour : l'état en une ligne ; --activer l'écrit. Codes : 0 fait, 1 rien n'a été changé, 2 faute d'usage. */
+function cmdMisesAJour(ctx, o) {
+  const autres = Object.keys(o).filter((k) => k !== 'positionnels' && k !== 'activer');
+  if (autres.length || o.positionnels.length || (o.activer !== undefined && o.activer !== true)) {
+    ctx.ecrire(`Option inconnue pour mises-a-jour. Usage : ${commandeC360(ctx)} mises-a-jour [--activer]\n`);
+    return 2;
+  }
+  const config = dossierConfiguration(ctx);
+  if (!o.activer) {
+    ctx.ecrire(`Mises à jour automatiques : ${miseAJourAutomatique(config)}\n`);
+    return 0;
+  }
+  let resultat;
+  try {
+    resultat = activerMiseAJourAutomatique(config);
+  } catch (e) {
+    const erreur = e instanceof ErreurReglages ? e : new ErreurReglages('ecriture', (e && e.code) || 'erreur inattendue');
+    noterErreur(ctx, 'mises-a-jour --activer', `rien n'a été changé, ${erreur.message}`);
+    const quoi = {
+      configuration: 'Ce dossier n\'est pas la configuration de Claude Code (aucun catalogue de plugins n\'y est connu)',
+      lecture: `Le fichier de réglages de Claude n'a pas pu être lu (${erreur.detail})`,
+      json: 'Le fichier de réglages de Claude n\'est pas un JSON valide',
+      forme: `Le fichier de réglages de Claude n'a pas la forme attendue (${erreur.detail})`,
+      ecriture: `Le fichier de réglages de Claude n'a pas pu être écrit (${erreur.detail})`,
+    }[erreur.raison];
+    ctx.ecrire(`Mises à jour automatiques : non activées. ${quoi} : rien n'a été changé.\n${SUITE_REGLAGES_INTACTS}\n`);
+    return 1;
+  }
+  ctx.ecrire(resultat === 'deja'
+    ? 'Mises à jour automatiques : oui, déjà activées.\n'
+    : 'Mises à jour automatiques : oui. Les packs de Studio 360D se mettront à jour seuls : une nouvelle version arrive ' +
+      'pendant une session et sert dès la suivante.\n');
+  return 0;
 }
 
 export async function rapportDiagnostic(ctx) {
@@ -950,6 +1132,9 @@ function aide(ctx) {
     '    lance un programme du studio, en Python ou en Node, puis efface sa copie.',
     `${c} nettoyer`,
     `${c} diagnostic`,
+    `${c} mises-a-jour [--activer]`,
+    '    sans option : dit si les packs se mettent à jour seuls (oui, non ou inconnu) ;',
+    '    --activer : l\'active dans les réglages de l\'utilisateur de Claude Code, sans rien changer d\'autre.',
     '',
   ].join('\n');
 }
@@ -1022,6 +1207,8 @@ export async function principal(argv, options = {}) {
     case 'diagnostic':
       ctx.ecrire(`${await rapportDiagnostic(ctx)}\n`);
       return 0;
+    case 'mises-a-jour':
+      return cmdMisesAJour(ctx, o);
     case 'aide':
     case '--help':
     case '-h':
