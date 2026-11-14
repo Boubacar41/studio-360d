@@ -229,14 +229,28 @@ const CONSIGNE_ACTIVATION =
   'son étape « Les conditions d\'utilisation », qui mène à l\'activation. Sinon, propose au membre ' +
   'de lancer le skill /base:demarrer.';
 
-function texteNonActive() {
+/**
+ * Pas de clé dans le dossier de données donné. Épreuve 9 : sous PowerShell, une variable de travail `$D` a remplacé
+ * `$d` (les noms ne distinguent pas la casse), `--data` a pointé vers un dossier d'images, et ce message a fait lancer
+ * /base:demarrer sur un ordinateur activé. Il nomme donc le dossier lu et fait d'abord vérifier la commande.
+ * @param {'skill'|'outil'} quoi ce que la commande voulait : charger un skill, ou lancer un outil
+ */
+function texteNonActive(ctx, quoi = 'skill') {
+  const empeche = quoi === 'outil' ? 'cet outil ne peut pas se lancer' : 'ce skill ne peut pas se charger';
   return [
     '# Studio 360D n\'est pas encore activé',
     '',
-    'Studio 360D n\'est pas encore activé sur cet ordinateur, alors ce skill ne peut pas se charger.',
+    `Studio 360D n'est pas encore activé sur cet ordinateur, alors ${empeche}.`,
     'L\'activation prend deux minutes.',
     '',
-    CONSIGNE_ACTIVATION,
+    'Consigne pour Claude : la clé de l\'ordinateur a été cherchée dans le dossier donné après --data, ici ' +
+      `« ${versSlash(ctx.donnees)} ».`,
+    'Si une commande du studio a marché plus tôt dans cette conversation, ou si le diagnostic dit l\'ordinateur activé, ' +
+      'c\'est sans doute ta commande qui est fausse : compare-la à celle qu\'écrit la procédure, le dossier après --data ' +
+      'compris, puis relance-la écrite en entier, sans variable du terminal (sous PowerShell, $D et $d sont la même ' +
+      'variable). Avant cette vérification, ne lance ni le diagnostic ni /base:demarrer, et ne dis pas au membre que son ' +
+      'studio n\'est plus activé.',
+    `Sinon : ${CONSIGNE_ACTIVATION.replace(/^Consigne pour Claude : /, '')}`,
     'Une fois l\'ordinateur activé, reviens à sa demande de départ.',
   ].join('\n');
 }
@@ -472,7 +486,7 @@ export async function chargerTexte(ctx, nom) {
     if (typeof globalThis.fetch !== 'function' || !nodeAssezRecent(ctx.versionNode)) return texteNodeAncien(ctx);
     if (!nom) return `Il manque le nom du skill à charger. Exemple : ${commandeC360(ctx)} charger <pack>/<skill>`;
     const compte = lireCompte(ctx);
-    if (!compte) return texteNonActive();
+    if (!compte) return texteNonActive(ctx, 'skill');
     const r = await demanderAvecJeton(ctx, compte, `/api/charger?nom=${encodeURIComponent(nom)}`);
     if (r.statut === 200 && r.donnees.ok && typeof r.donnees.texte === 'string') {
       return r.donnees.texte.split('{{C360}}').join(commandeC360(ctx));
@@ -804,7 +818,7 @@ async function cmdRun(ctx, outil, args) {
   }
   const compte = lireCompte(ctx);
   if (!compte) {
-    ctx.ecrireErreur(`${texteNonActive()}\n`);
+    ctx.ecrireErreur(`${texteNonActive(ctx, 'outil')}\n`);
     return 3;
   }
   let r;

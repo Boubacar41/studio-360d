@@ -35,8 +35,12 @@ entraîner le retrait de ton accès.
 
 Ce que tu produis avec Studio 360D t'appartient : tes images, tes vidéos, tes textes, tes
 fichiers et ceux de tes clients. Le serveur de Studio 360D ne reçoit ni tes créations ni tes
-fichiers. Quand tu génères une image, ton prompt et les images que tu joins partent chez le
-fournisseur que tu as choisi, avec ta clé, comme si tu l'utilisais toi-même.
+fichiers. Quand tu génères une image, une vidéo, une voix, une musique ou des bruitages, ton
+prompt ou ton texte et les fichiers que tu joins (images, sons, vidéos) partent chez le
+fournisseur que tu as choisi, avec ta clé, comme si tu l'utilisais toi-même ; une voix que tu
+clones y reste enregistrée. Quand tu fais transcrire une vidéo, pour la nettoyer ou la
+sous-titrer, seul le son part chez le fournisseur de transcription, jamais l'image. Une recherche
+de plans de stock n'envoie que ses mots à la banque d'images (Pexels ou Pixabay).
 
 ## 5. Ce que le serveur garde, et combien de temps
 
@@ -80,7 +84,8 @@ conditions relèvent des lois du Québec et des lois fédérales du Canada qui s
   des renseignements personnels à des hébergeurs hors du Québec (§5), et le registre des
   incidents de confidentialité.
 - Les services tiers que tu utilises avec tes propres comptes et tes propres clés
-  (génération d'images, de vidéos, de voix) : ce que les conditions en disent.
+  (génération d'images, de vidéos, de voix, de musique et de bruitages ; transcription ; banques
+  d'images) : ce que les conditions en disent.
 - Les outils libres installés par les procédures (par exemple HyperFrames ou video-use) :
   d'où ils viennent et sous quelle licence.
 - La façon dont ces conditions changent, et dont tu en es prévenu.

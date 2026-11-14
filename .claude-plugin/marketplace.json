@@ -8,12 +8,17 @@
     {
       "name": "base",
       "source": "./plugins/base",
-      "description": "Le socle de Studio 360D : démarrer, ta marque et ton marché, la stratégie, les prompts, la génération d'images, les personnages et la passe de réalisme."
+      "description": "Le socle de Studio 360D : ta marque, ton marché, la stratégie, les prompts, la génération, les personnages, la voix, le montage, le motion, l'avatar et le rush."
     },
     {
       "name": "images",
       "source": "./plugins/images",
       "description": "Le pack Images de Studio 360D : pubs image, posts et carrousels, et visuels de produits pour la boutique, la pub ou les réseaux."
+    },
+    {
+      "name": "videos-courtes",
+      "source": "./plugins/videos-courtes",
+      "description": "Six formats de vidéos courtes pour tes pubs et tes réseaux, face caméra, podcast, avatar et motion, film, animation et UGC."
     }
   ]
 }

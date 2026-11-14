@@ -1,0 +1,20 @@
+{
+  "name": "videos-courtes",
+  "version": "0.1.0",
+  "description": "Six formats de vidéos courtes pour tes pubs et tes réseaux, face caméra, podcast, avatar et motion, film, animation et UGC.",
+  "author": {
+    "name": "Créateurs 360D"
+  },
+  "homepage": "https://github.com/Boubacar41/studio-360d",
+  "repository": "https://github.com/Boubacar41/studio-360d",
+  "keywords": [
+    "studio-360d",
+    "ia",
+    "creation",
+    "images",
+    "video"
+  ],
+  "dependencies": [
+    "base"
+  ]
+}

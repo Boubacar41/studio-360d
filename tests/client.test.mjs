@@ -222,6 +222,28 @@ test('charger avant activation : message clair et code 0', async () => {
   assert.match(r.stdout, /L'activation prend deux minutes\.\n/);
 });
 
+test('pas activé : le message nomme le dossier lu et fait vérifier la commande avant tout diagnostic (épreuve 9)', async () => {
+  // Sous PowerShell, `$D="…/etapes/departs"` avait remplacé `$d`, le dossier de données : `--data` lisait les images.
+  const images = path.join(travail, 'productions', 'film', 'etapes', 'departs');
+  fs.mkdirSync(images, { recursive: true });
+  fs.writeFileSync(path.join(images, 'P3-01.png'), 'image');
+  const lu = `« ${versSlash(images)} »`;
+  const charge = await client(['charger', 'base/essai'], { donnees: images });
+  assert.equal(charge.code, 0);
+  const lance = await client(['run', 'modules', '--', 'a'], { donnees: images });
+  assert.equal(lance.code, 3, lance.stderr);
+  for (const [texte, empeche] of [[charge.stdout, 'ce skill ne peut pas se charger'], [lance.stderr, 'cet outil ne peut pas se lancer']]) {
+    assert.ok(texte.includes(`activé sur cet ordinateur, alors ${empeche}.`), texte);
+    assert.ok(texte.includes(`dans le dossier donné après --data, ici ${lu}.`), texte);
+    assert.match(texte, /Si une commande du studio a marché plus tôt dans cette conversation, ou si le diagnostic dit l'ordinateur activé/);
+    assert.match(texte, /relance-la écrite en entier, sans variable du terminal \(sous PowerShell, \$D et \$d sont la même variable\)/);
+    assert.match(texte, /Avant cette vérification, ne lance ni le diagnostic ni \/base:demarrer/);
+    // La consigne d'activation ne vient qu'ensuite, pour un ordinateur vraiment pas activé.
+    assert.ok(texte.indexOf('Avant cette vérification') < texte.indexOf('Sinon : si tu suis déjà le skill /base:demarrer, ne le relance pas'), texte);
+  }
+  assert.ok(!fs.existsSync(path.join(images, 'compte.json')) && !fs.existsSync(path.join(images, 'exec')), 'rien n\'est écrit dans le dossier lu');
+});
+
 test('activation : conditions exigées, puis compte.json écrit', async () => {
   assert.equal((await client(['activer', '--email', EMAIL])).code, 0);
   assert.equal((await client(['activer', '--email', EMAIL, '--code', CODE])).code, 1);

@@ -12,17 +12,22 @@ actifs de la communauté, au moment où un skill s'ouvre.
 
 ### Base
 
-Le socle de Studio 360D : démarrer, ta marque et ton marché, la stratégie, les prompts, la génération d'images, les personnages et la passe de réalisme.
+Le socle de Studio 360D : ta marque, ton marché, la stratégie, les prompts, la génération, les personnages, la voix, le montage, le motion, l'avatar et le rush.
 
+- `/base:avatar-parlant` : Faire parler un personnage ou ton avatar, un clip par réplique, lèvres et voix calées, coût annoncé. À utiliser pour tout plan où quelqu'un parle face caméra.
 - `/base:demarrer` : Installer, activer et préparer Studio 360D, puis ranger ton studio. À utiliser au premier lancement, sur un nouvel ordinateur, si le studio n'est pas activé ou si quelque chose ne marche pas.
-- `/base:generer` : Générer des images chez ton fournisseur (fal.ai par défaut), avec le prix lu en direct et les dépenses notées. À utiliser pour lancer une génération, connaître un prix ou ce que tu as dépensé.
-- `/base:inspiration` : Disséquer une pub ou une image qui marche (lien, capture ou fichier), en tirer un squelette neutre et des concepts pour ta marque. À utiliser quand on part d'un contenu qui performe.
+- `/base:generer` : Générer images, vidéos, voix, musique et bruitages chez ton fournisseur, prix lu en direct et dépenses notées. À utiliser pour lancer une génération, connaître un prix ou ce que tu as dépensé.
+- `/base:inspiration` : Disséquer une pub, une image ou une vidéo qui marche (lien, capture ou fichier), en tirer un squelette neutre et des concepts pour ta marque. À utiliser quand on part d'un contenu qui performe.
 - `/base:marche` : Étude de marché « voix du client » (express par défaut, ou complète) avec personas, mots, objections et affirmations à éviter. À utiliser pour connaître ses clients ou préparer une offre.
 - `/base:marque` : Créer ou mettre à jour la fiche d'une marque ou d'un client (offre, public, ton, charte, produits) depuis un entretien, un site ou des documents. À utiliser avant de créer pour une nouvelle marque.
+- `/base:montage` : Monter une vidéo depuis ses éléments, karaoké, son au bon niveau, formats 9:16 et 4:5 et contrôle avant livraison. À utiliser pour assembler, sous-titrer ou décliner une vidéo.
+- `/base:motion` : Scènes animées aux couleurs et à la police de ta marque, calées sur la voix, et carton de fin. À utiliser pour expliquer à l'écran, animer un chiffre ou finir une vidéo.
 - `/base:passe-realisme` : Retirer l'aspect « IA » d'un clip vidéo généré (contraste, saturation, hautes lumières, léger tremblement). À utiliser quand un clip paraît trop propre, trop saturé ou « fait rendu 3D ».
 - `/base:personnage` : Créer un personnage IA réaliste et constant (fictif, ou toi-même depuis tes photos) avec sa fiche en six angles. À utiliser pour un avatar, un mannequin ou un visage à garder d'une image à l'autre.
-- `/base:prompt` : Écrire, améliorer, diagnostiquer un prompt d'image, retoucher une image et garder les prompts réussis. À utiliser quand une image paraît fausse ou générique, ou pour partir d'un exemple qui a marché.
+- `/base:prompt` : Écrire, corriger, diagnostiquer un prompt d'image ou de vidéo, retoucher une image, garder les prompts réussis. À utiliser quand une image ou un clip paraît faux, ou pour un prompt Kling ou Seedance.
+- `/base:rush` : Nettoyer un vrai enregistrement (silences, euh, reprises) sans couper les mots, et recadrer l'écran filmé. À utiliser pour une prise filmée, un replay de live ou une capture.
 - `/base:strategie` : Carte stratégique, structure éprouvée choisie selon le niveau de conscience, puis texte d'une pub ou d'un post. À utiliser pour écrire une pub ou un carrousel, de zéro ou depuis son propre script.
+- `/base:voix-et-son` : Voix off, voix d'un personnage, mot mal prononcé remplacé, musique et bruitages au bon niveau. À utiliser pour toute voix ou tout son d'une vidéo, ou quand un mot sonne faux.
 
 ### Images
 
@@ -30,6 +35,17 @@ Le pack Images de Studio 360D : pubs image, posts et carrousels, et visuels de p
 
 - `/images:image` : Créer une pub image ou un post, en un passage ou en voie complète, carrousels compris, aux formats 1:1, 4:5 et 9:16. À utiliser pour toute image de pub ou de réseau social.
 - `/images:visuels-produit` : Visuels e-commerce d'un produit (porté, en main, refait d'après une image, seul) qui gardent le produit exact, avec retouches ciblées. À utiliser pour la boutique, une pub ou les réseaux.
+
+### Vidéos courtes
+
+Six formats de vidéos courtes pour tes pubs et tes réseaux, face caméra, podcast, avatar et motion, film, animation et UGC.
+
+- `/videos-courtes:animee` : Pub animée (2D peinte, pâte à modeler, jeu vidéo) avec narrateur et style tenu sur tous les plans. À utiliser pour raconter une histoire en animation.
+- `/videos-courtes:avatar-motion` : Vidéo courte portée par un avatar, avec scènes animées, B-roll et vraies captures. À utiliser pour présenter un produit, un logiciel ou une liste de conseils.
+- `/videos-courtes:face-camera` : Faire de ta prise face caméra ou de ton replay une vidéo prête, pour une pub ou pour chaque réseau. À utiliser quand tu t'es filmé, ou pour écrire le script à filmer.
+- `/videos-courtes:film` : Court métrage ou pub mise en scène par IA, personnages, lieux et objets tenus d'un plan à l'autre. À utiliser pour une histoire en plusieurs plans ou une pub cinéma.
+- `/videos-courtes:podcast` : Pub façon extrait de podcast, deux personnes au micro, champ-contrechamp et personnages constants. À utiliser pour une pub podcast ou une interview mise en scène.
+- `/videos-courtes:ugc` : Pub UGC filmée au téléphone par un avatar qui présente, porte ou recommande un produit, témoignage compris. À utiliser pour une pub UGC ou un produit en main.
 
 ---
 
@@ -72,7 +88,7 @@ Python, ffmpeg) : `/base:demarrer` s'en charge.
 
 Résume-lui ces points avec tes mots, simplement, puis demande-lui s'il veut continuer :
 
-1. **Ce qui sera installé** : les packs Base et Images, 11 skills, téléchargés depuis ce dépôt GitHub. Chaque
+1. **Ce qui sera installé** : les packs Base, Images et Vidéos courtes, 22 skills, téléchargés depuis ce dépôt GitHub. Chaque
    pack contient ses skills, la police DM Sans et un petit programme, le client du studio.
    L'installation ne télécharge que ce dépôt.
 2. **À chaque ouverture de session** : le pack Base regarde, sur son ordinateur seulement et sans
@@ -85,14 +101,21 @@ Résume-lui ces points avec tes mots, simplement, puis demande-lui s'il veut con
 4. **Ce que le serveur connaît** : son adresse e-mail de membre, ses ordinateurs activés (nom,
    type, version et architecture du système), la liste des skills, références et outils qu'il
    ouvre (quand, depuis quel ordinateur) et la version des conditions qu'il a acceptée. Jamais
-   ses créations ni ses fichiers. Quand il génère une image, son prompt et les images qu'il
-   joint partent chez le fournisseur qu'il a choisi, avec sa clé.
+   ses créations ni ses fichiers. Quand il génère une image, une vidéo, une voix, une musique
+   ou des bruitages, son prompt ou son texte et les fichiers qu'il joint (images, sons, vidéos)
+   partent chez le fournisseur qu'il a choisi, avec sa clé ; une voix qu'il clone y reste
+   enregistrée. Quand il fait transcrire une vidéo, pour la nettoyer ou la sous-titrer, seul le
+   son part chez le fournisseur de transcription, jamais l'image. Une recherche de plans de
+   stock n'envoie que ses mots à la banque d'images.
 5. **Ensuite** : si Node manque, `/base:demarrer` l'installe, avec son accord. Puis, une étape
-   et un accord à la fois, il pose l'environnement du studio (environ 1 Go, quelques minutes,
+   et un accord à la fois, il pose l'environnement du studio (environ 1,2 Go, quelques minutes,
    sans terminal ; sous Linux, un mot de passe peut être demandé pour une bibliothèque du
    système, si elle manque), son studio, son profil et une première image, dont il annonce
-   le prix avant. Générer des images demande un compte payant chez un fournisseur d'images
-   (fal.ai par défaut), que le membre crée quand `/base:demarrer` le lui propose. Enfin, il lui
+   le prix avant. Générer des images ou des vidéos demande un compte payant chez un
+   fournisseur (fal.ai par défaut), que le membre crée quand `/base:demarrer` le lui propose.
+   Une voix, une musique ou des bruitages générés, ou la transcription d'une vidéo, demandent
+   un compte chez ElevenLabs (ou Fish pour une voix) ; des plans de stock, une clé Pexels ou
+   Pixabay : il les crée le jour où un skill en a besoin. Enfin, il lui
    propose que les packs se mettent à jour seuls : leur contenu pourra alors changer sans
    nouvelle demande de sa part.
 
@@ -124,12 +147,13 @@ au programme qui l'a lancée. Ce n'est pas une fouille : c'est le seul endroit o
    celui qui a répondu : remplace-le par son chemin entre guillemets (`& "<chemin>"` sous
    PowerShell, `"<chemin>"` sous Bash).
 2. Dis au membre : « Je vais installer Studio 360D, depuis le dépôt GitHub
-   Boubacar41/studio-360d, pour toi seulement : les packs Base et Images, 11 skills. » Avec son accord, lance
+   Boubacar41/studio-360d, pour toi seulement : les packs Base, Images et Vidéos courtes, 22 skills. » Avec son accord, lance
    ces commandes, dans l'ordre :
    ```
    claude plugin marketplace add https://github.com/Boubacar41/studio-360d
    claude plugin install base@studio-360d --scope user
    claude plugin install images@studio-360d --scope user
+   claude plugin install videos-courtes@studio-360d --scope user
    ```
    L'adresse complète, en `https://`, est voulue : avec la forme courte `Boubacar41/studio-360d`,
    Claude Code passe par SSH quand l'ordinateur a une clé GitHub, et les mises à jour peuvent
@@ -147,7 +171,7 @@ Si son application est dans une autre langue, les boutons sont aux mêmes places
 ce qu'il voit plutôt que de deviner. « Marketplace » est ici le nom d'un bouton : c'est la seule
 fois où tu peux employer ce mot.
 
-Le catalogue contient les packs Base et Images, 11 skills. Commence par lui dire : « Installe chaque pack,
+Le catalogue contient les packs Base, Images et Vidéos courtes, 22 skills. Commence par lui dire : « Installe chaque pack,
 Base d'abord. Quand tu verras le message "… est installé et prêt à être utilisé" pour le
 dernier, reviens ici et dis-moi "c'est installé" : on vérifiera ensemble que tout est là. »
 
@@ -192,7 +216,7 @@ Quand il revient :
 
 Si Node manque, `/base:demarrer` l'installe. Il présente les conditions d'utilisation et active
 l'ordinateur avec un code reçu par e-mail. Ensuite, avec l'accord du membre et une étape à la
-fois, il pose l'environnement du studio (environ 1 Go, quelques minutes, sans terminal ; sous
+fois, il pose l'environnement du studio (environ 1,2 Go, quelques minutes, sans terminal ; sous
 Linux, un mot de passe peut être demandé pour une bibliothèque du système, si elle manque),
 puis son studio, son profil et une première image, dont il annonce le prix avant.
 Après quoi, les skills s'ouvrent d'eux-mêmes quand la demande du membre s'y prête, par exemple
@@ -250,11 +274,14 @@ avec son accord :
   l'onglet **Code**, en session **locale**, dans le dossier où tu ranges tes créations.
 - Un ordinateur sous **Windows, macOS ou Linux**. Pour Linux : Ubuntu 22.04 ou plus, ou
   Debian 12 ou plus.
-- Un compte payant chez un fournisseur d'images (fal.ai par défaut), réglé à l'usage : sans lui,
-  aucune image ne sort. Tu le crées quand Claude te le propose.
+- Un compte payant chez un fournisseur d'images et de vidéos (fal.ai par défaut), réglé à
+  l'usage : sans lui, aucune image ni aucune vidéo générée ne sort. Pour une voix ou une musique
+  générées, ou la transcription d'une vidéo, un compte chez ElevenLabs (ou Fish pour une voix) ;
+  pour des plans de stock, une clé Pexels ou Pixabay. Tu crées chaque compte quand Claude te le
+  propose.
 - Rien d'autre à préparer. Si Node manque, `/base:demarrer` l'installe ; il faudra peut-être
   fermer et rouvrir l'application. Il pose ensuite, avec ton accord, l'environnement du studio
-  (environ 1 Go, quelques minutes, sans terminal ; sous Linux, un mot de passe peut être demandé
+  (environ 1,2 Go, quelques minutes, sans terminal ; sous Linux, un mot de passe peut être demandé
   pour une bibliothèque du système, si elle manque), puis ton studio, ton profil et une première
   image, dont il t'annonce le prix avant.
 
@@ -272,11 +299,15 @@ quelques minutes.
 **Ce qui reste chez toi, et ce qui en sort**
 
 Aucune création ni aucun fichier ne part sur le serveur de Studio 360D, ni les tiens ni ceux de
-tes clients. Quand tu génères une image, ton prompt et les images que tu joins partent chez le
-fournisseur que tu as choisi, avec ta clé, comme si tu l'utilisais toi-même. Ne joins donc rien
-que tu ne veux pas lui confier. Le serveur ne connaît que ton e-mail, tes ordinateurs activés et
-la liste des skills, références et outils que tu ouvres. Le détail est dans
-[CONDITIONS.md](CONDITIONS.md) (brouillon).
+tes clients. Quand tu génères une image, une vidéo, une voix, une musique ou des bruitages, ton
+prompt ou ton texte et les fichiers que tu joins (images, sons, vidéos) partent chez le
+fournisseur que tu as choisi, avec ta clé, comme si tu l'utilisais toi-même ; une voix que tu
+clones y reste enregistrée. Quand tu fais transcrire une vidéo, pour la nettoyer ou la
+sous-titrer, seul le son part chez le fournisseur de transcription, jamais l'image. Une recherche
+de plans de stock n'envoie que ses mots à la banque d'images. Ne joins donc rien que tu ne veux
+pas leur confier. Le serveur ne connaît que ton
+e-mail, tes ordinateurs activés et la liste des skills, références et outils que tu ouvres. Le
+détail est dans [CONDITIONS.md](CONDITIONS.md) (brouillon).
 
 **Les règles**
 
@@ -294,3 +325,6 @@ Le rapport ne contient ni ton e-mail ni ta clé.
 Écris à Claude :
 
 > Désinstalle Studio 360D : https://github.com/Boubacar41/studio-360d
+
+La désinstallation laisse une copie des packs dans le cache de Claude Code, jusqu'à son
+nettoyage : Claude te propose aussi de l'effacer.
