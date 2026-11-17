@@ -1096,10 +1096,27 @@ test('ordinateur retiré : la clé périmée est effacée, et le message ne fait
 
 test('skill demarrer : Node, état, conditions et activation dans la coque, puis la suite chargée du serveur', { skip: !fs.existsSync(path.join(SOURCE, 'skills', 'demarrer', 'SKILL.md')) }, () => {
   const t = fs.readFileSync(path.join(SOURCE, 'skills', 'demarrer', 'SKILL.md'), 'utf8');
-  const etapes = ['node --version', '" diagnostic', '" conditions', '" activer --email <adresse>','--accepte-conditions', '" charger base/demarrer'];
-  const i = etapes.map((e) => t.indexOf(e));
-  assert.ok(i.every((x) => x >= 0), JSON.stringify(i));
-  assert.deepEqual([...i].sort((a, b) => a - b), i, 'dans cet ordre');
+  const prefixe = 'node "${CLAUDE_PLUGIN_ROOT}/client/c360.mjs" --data "${CLAUDE_PLUGIN_DATA}" ';
+  const commandes = (texte) => texte.split('\n').filter((l) => l.includes(prefixe))
+    .map((l) => l.slice(l.indexOf(prefixe) + prefixe.length).trim());
+  // L1 ajoute un chemin pour un ordinateur déjà activé, distinct de l'activation initiale.
+  const renouvellement = /^Si cet ordinateur est déjà activé(?=\s|$)[\s\S]*?(?=^## )/m.exec(t);
+  assert.ok(renouvellement, 'le renouvellement reste dans sa branche conditionnelle');
+  assert.match(renouvellement[0], /après son oui/, 'le renouvellement attend le consentement');
+  assert.deepEqual(commandes(renouvellement[0]), ['accepter-conditions --accepte-conditions']);
+  assert.match(renouvellement[0], /reprends « Charger la suite »/);
+  const neuf = t.replace(renouvellement[0], '');
+  assert.deepEqual(commandes(neuf), [
+    'diagnostic',
+    'conditions',
+    'activer --email <adresse>',
+    'activer --email <adresse> --code <code> --accepte-conditions',
+    'charger base/demarrer',
+  ], 'ordinateur neuf : chaque commande complète, dans son ordre');
+  assert.ok(neuf.indexOf('node --version') >= 0 && neuf.indexOf('node --version') < neuf.indexOf(`${prefixe}diagnostic`), 'Node avant le diagnostic');
+  const consentement = neuf.indexOf('Sans un oui clair, arrête-toi là');
+  assert.ok(consentement > neuf.indexOf(`${prefixe}conditions`) && consentement < neuf.indexOf(`${prefixe}activer --email`), 'consentement explicite avant activation');
+  assert.match(neuf, /Une fois son oui reçu, demande l'adresse/);
   assert.doesNotMatch(t, /^!`/m, 'pas de ligne ! : Node peut manquer');
 });
 
