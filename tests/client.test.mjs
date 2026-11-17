@@ -17,8 +17,11 @@ const SOURCE = [path.join(ICI, '..', 'plugins', 'base'), path.join(ICI, '..')]
   .find((d) => fs.existsSync(path.join(d, 'client', 'c360.mjs')));
 const {
   trouverPython, creerContexte, versSlash, principal, nodeAssezRecent, NODE_MIN, executerOutil, VERSION_CLIENT, pythonEnvironnement,
-  remplacerFichier, activerMiseAJourAutomatique, ErreurReglages,
+  remplacerFichier, activerMiseAJourAutomatique, ErreurReglages, lireVersionConditions,
 } = await import(pathToFileURL(path.join(SOURCE, 'client', 'c360.mjs')).href);
+
+// Le lecteur du client garde ces tests autonomes dans la coque publique.
+const VERSION_CONDITIONS = lireVersionConditions({ dossierClient: path.join(SOURCE, 'client') });
 
 const EMAIL = 'membre@exemple.fr';
 const CODE = '123456';
@@ -84,7 +87,7 @@ const serveur = http.createServer((req, res) => {
         etat.activations.push(donnees);
         if (!donnees.code) return repondre(res, 200, { ok: true, message: 'Un code à six chiffres vient de partir.' });
         if (donnees.code !== CODE) return repondre(res, 400, { ok: false, raison: 'code-faux', message: 'Ce code n\'est pas le bon.' });
-        if (donnees.conditions !== '2026-11-01') return repondre(res, 400, { ok: false, raison: 'conditions', message: 'Conditions.' });
+        if (donnees.conditions !== VERSION_CONDITIONS) return repondre(res, 400, { ok: false, raison: 'conditions', message: 'Conditions.' });
         return repondre(res, 200, { ok: true, cle: CLE, appareil: 'abcdef012345', message: 'Studio 360D est activé sur cet ordinateur.' });
       case '/api/jeton':
         if (donnees.cle !== CLE) return repondre(res, 401, { ok: false, raison: 'appareil', message: 'Cet ordinateur n\'est plus activé.' });
@@ -250,6 +253,89 @@ test('activation : conditions exigées, puis compte.json écrit', async () => {
   const r = await client(['activer', '--email', EMAIL, '--code', CODE, '--accepte-conditions']);
   assert.equal(r.code, 0, r.stdout);
   assert.equal(JSON.parse(fs.readFileSync(path.join(data, 'compte.json'), 'utf8')).cle, CLE);
+});
+
+function contexteAccordL1(nom, { refuserAccord = false } = {}) {
+  const donnees = activerDossier(path.join(racineDonnees, `accord-${nom}`));
+  const version = lireVersionConditions({ dossierClient: path.join(plugin, 'client') });
+  const appels = [];
+  let sortie = '';
+  let erreur = '';
+  const reponse = (status, objet) => new Response(JSON.stringify(objet), { status, headers: { 'content-type': 'application/json' } });
+  const fetch = async (adresse, options) => {
+    const route = new URL(adresse).pathname;
+    const corps = options.body ? JSON.parse(options.body) : undefined;
+    appels.push({ route, methode: options.method, corps });
+    if (route === '/api/jeton') return reponse(200, { ok: true, jeton: 'v1.accord.signature', expire: Date.now() + 900_000 });
+    if (route === '/api/conditions') {
+      assert.equal(options.headers.authorization, 'Bearer v1.accord.signature');
+      if (refuserAccord) return reponse(400, { ok: false, raison: 'conditions', version: '2099-01-01', message: 'Mets Studio 360D à jour avant de donner ton accord.' });
+      assert.deepEqual(corps, { conditions: version });
+      return reponse(200, { ok: true, conditions: version });
+    }
+    return reponse(403, { ok: false, raison: 'conditions', version, message: `Les conditions d'utilisation de Studio 360D ont changé (version ${version}).` });
+  };
+  const options = {
+    dossierClient: path.join(plugin, 'client'), dossierDonnees: donnees, fetch,
+    ecrire: (t) => { sortie += t; }, ecrireErreur: (t) => { erreur += t; },
+  };
+  return { donnees, version, appels, options, texte: () => sortie + erreur };
+}
+
+test('L1 : un refus conditions guide charger et run, sans accord ni rejeu automatiques', async () => {
+  for (const [args, code] of [[['charger', 'base/essai'], 0], [['run', 'horloge', '--', 'x'], 3]]) {
+    const c = contexteAccordL1(args[0]);
+    assert.equal(await principal(args, c.options), code);
+    const texte = c.texte();
+    assert.match(texte, /Les conditions d'utilisation de Studio 360D ont changé/);
+    assert.match(texte, /Consigne pour Claude :.*conditions/);
+    assert.match(texte, /résume/);
+    assert.match(texte, /accord/);
+    assert.match(texte, /accepter-conditions --accepte-conditions/);
+    assert.doesNotMatch(texte, /c360_cle_de_test|membre@exemple|\u2014/);
+    assert.deepEqual(c.appels.map((a) => [a.methode, a.route]), [['POST', '/api/jeton'], ['GET', args[0] === 'charger' ? '/api/charger' : '/api/outil']]);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(c.donnees, 'compte.json'), 'utf8')).cle, CLE, 'le compte reste activé');
+    assert.equal(JSON.parse(fs.readFileSync(path.join(c.donnees, 'jeton.json'), 'utf8')).jeton, 'v1.accord.signature', 'le jeton reste disponible pour donner l’accord sans code');
+    assert.ok(execVide(c.donnees), 'aucun outil téléchargé ni exécuté');
+  }
+});
+
+test('L1 : accepter-conditions exige le consentement explicite avant tout appel', async () => {
+  for (const args of [[], ['--accepte-conditions=false'], ['--accepte-conditions=non']]) {
+    const c = contexteAccordL1(`sans-accord-${args.length ? args[0].split('=')[1] : 'absent'}`);
+    assert.equal(await principal(['accepter-conditions', ...args], c.options), 1);
+    assert.match(c.texte(), /lire et accepter les conditions/);
+    assert.equal(c.appels.length, 0);
+  }
+});
+
+test('L1 : accepter-conditions envoie la version locale sans code, puis garde le compte et sa clé', async () => {
+  const c = contexteAccordL1('accord');
+  const avant = JSON.parse(fs.readFileSync(path.join(c.donnees, 'compte.json'), 'utf8'));
+  assert.equal(await principal(['accepter-conditions', '--accepte-conditions'], c.options), 0, c.texte());
+  assert.deepEqual(c.appels.map((a) => [a.methode, a.route]), [['POST', '/api/jeton'], ['POST', '/api/conditions']]);
+  const apres = JSON.parse(fs.readFileSync(path.join(c.donnees, 'compte.json'), 'utf8'));
+  assert.deepEqual(apres, { ...avant, conditions: c.version });
+  assert.match(c.texte(), /conditions.*acceptées/i);
+  assert.doesNotMatch(c.texte(), /c360_cle_de_test|membre@exemple|\u2014/);
+});
+
+test('L1 : une version refusée reste sans accord local et le POST ne se rejoue pas', async () => {
+  const c = contexteAccordL1('version-refusee', { refuserAccord: true });
+  const avant = fs.readFileSync(path.join(c.donnees, 'compte.json'), 'utf8');
+  assert.equal(await principal(['accepter-conditions', '--accepte-conditions'], c.options), 1);
+  assert.equal(fs.readFileSync(path.join(c.donnees, 'compte.json'), 'utf8'), avant);
+  assert.equal(c.appels.filter((a) => a.route === '/api/conditions').length, 1);
+  assert.match(c.texte(), /Mets Studio 360D à jour/);
+});
+
+test('L1 : conditions et aide donnent la commande de renouvellement pour un ordinateur activé', async () => {
+  const c = contexteAccordL1('texte');
+  assert.equal(await principal(['conditions'], c.options), 0);
+  assert.match(c.texte(), /accepter-conditions --accepte-conditions/);
+  const aide = contexteAccordL1('aide');
+  assert.equal(await principal(['aide'], aide.options), 0);
+  assert.match(aide.texte(), /accepter-conditions --accepte-conditions/);
 });
 
 test('activer --nom : le nom donné part au serveur à la place du nom d\'hôte ; vide ou trop long, code 2 sans requête', async () => {

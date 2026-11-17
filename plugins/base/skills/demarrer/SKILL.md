@@ -70,6 +70,15 @@ pas encore.
 3. Demande-lui s'il les accepte, et rien d'autre dans ce message : l'adresse viendra après son
    oui. **Sans un oui clair, arrête-toi là** : l'activation n'est pas possible.
 
+Si cet ordinateur est déjà activé et que la suite a demandé les nouvelles conditions, après son oui,
+lance la commande suivante, puis reprends « Charger la suite ». Ne demande ni adresse ni code :
+
+```
+node "${CLAUDE_PLUGIN_ROOT}/client/c360.mjs" --data "${CLAUDE_PLUGIN_DATA}" accepter-conditions --accepte-conditions
+```
+
+Si le serveur demande une autre version, fais mettre Studio 360D à jour, puis reprends la lecture et sa validation.
+
 ## Activer l'ordinateur
 
 1. Une fois son oui reçu, demande l'adresse e-mail de son compte Skool, celle qu'il utilise
@@ -117,6 +126,8 @@ n'annonce rien : le point vient juste après.
 
 - Elle dit que l'ordinateur n'est pas activé, ou plus activé : reprends à « Les conditions d'utilisation ». Ne relance
   pas `/base:demarrer`.
+- Elle dit que les conditions ont changé : reprends à « Les conditions d'utilisation », puis à `accepter-conditions`
+  après son accord clair. Cet ordinateur reste activé.
 - Elle dit que le serveur ne répond pas : dis-le au membre et propose de réessayer dans une
   minute.
 - Elle dit que l'adhésion n'est plus active : transmets le message tel quel, avec le lien.

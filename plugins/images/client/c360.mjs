@@ -12,6 +12,7 @@
 //                                   (--nom : le nom envoyé au serveur à la place du nom d'hôte,
 //                                   1 à 60 caractères ; sert à simuler un autre ordinateur à l'essai)
 //   conditions                      affiche les conditions d'utilisation et leur version
+//   accepter-conditions --accepte-conditions   renouvelle l'accord d'un ordinateur déjà activé
 //   charger <plugin/skill>[/etape]  affiche la procédure ou la référence (sort TOUJOURS avec le code 0)
 //   run <outil> [-- arguments]      reçoit un programme Python ou Node, le lance depuis le dossier
 //                                   courant avec l'environnement du studio, puis efface sa copie
@@ -276,11 +277,16 @@ function texteRefus(ctx, donnees) {
     'non-membre': 'adresse pas encore dans la liste des membres',
     appareil: 'cet ordinateur n\'est plus activé',
     inconnu: 'skill introuvable',
+    conditions: 'les conditions ont changé',
   };
   const consignes = {
     adhesion: 'Consigne pour Claude : transmets ce message au membre tel quel, avec le lien.',
     'non-membre': 'Consigne pour Claude : transmets ce message au membre tel quel.',
     appareil: `${CONSIGNE_ACTIVATION} La clé de cet ordinateur ne servait plus : le studio l'a effacée.`,
+    conditions: `Consigne pour Claude : affiche ${commandeC360(ctx)} conditions, résume le texte au membre et demande son accord clair. ` +
+      'Sans cet accord, arrête-toi. Si la version affichée diffère de celle demandée par le serveur, fais mettre Studio 360D à jour, puis recommence la lecture. ' +
+      `Après son oui, lance ${commandeC360(ctx)} accepter-conditions --accepte-conditions, puis reprends sa demande. ` +
+      'Ne demande ni nouvelle activation ni code par courriel.',
   };
   return [
     `# Studio 360D : ${titres[raison] || 'demande refusée'}`,
@@ -596,6 +602,57 @@ async function cmdActiver(ctx, o) {
   }
 }
 
+async function cmdAccepterConditions(ctx, o) {
+  if (!nodeAssezRecent(ctx.versionNode)) {
+    ctx.ecrire(`${texteNodeAncien(ctx)}\n`);
+    return 5;
+  }
+  if (o['accepte-conditions'] !== true) {
+    ctx.ecrire(
+      'Il faut d\'abord lire et accepter les conditions d\'utilisation.\n' +
+      `Affiche-les avec : ${commandeC360(ctx)} conditions\n` +
+      'Après ton accord, relance avec --accepte-conditions.\n',
+    );
+    return 1;
+  }
+  if (o.positionnels.length || Object.keys(o).some((k) => !['positionnels', 'accepte-conditions'].includes(k))) {
+    ctx.ecrire(`Usage : ${commandeC360(ctx)} accepter-conditions --accepte-conditions\n`);
+    return 2;
+  }
+  const compte = lireCompte(ctx);
+  if (!compte) {
+    ctx.ecrire(`${texteNonActive(ctx)}\n`);
+    return 1;
+  }
+  const conditions = lireVersionConditions(ctx);
+  if (!conditions) {
+    ctx.ecrire('Le fichier des conditions est introuvable dans Studio 360D. Ouvre une nouvelle session pour mettre Studio 360D à jour, puis réessaie.\n');
+    return 1;
+  }
+  try {
+    const t = await obtenirJeton(ctx, compte);
+    const r = t.refus || await appeler(ctx, 'POST', '/api/conditions', { corps: { conditions }, jeton: t.jeton });
+    if (r.statut === 200 && r.donnees.ok && r.donnees.conditions === conditions) {
+      ecrireJSONFichier(fichier(ctx, 'compte.json'), { ...compte, conditions }, true);
+      ctx.ecrire('Les conditions d\'utilisation sont acceptées. Tu peux reprendre ta demande.\n');
+      return 0;
+    }
+    if (r.statut === 401 && r.donnees.raison === 'appareil') {
+      for (const f of ['compte.json', 'jeton.json']) fs.rmSync(fichier(ctx, f), { force: true });
+    } else if (r.statut === 401 && r.donnees.raison === 'jeton') {
+      // Le prochain essai renouvellera le jeton ; aucun POST n'est rejoué à l'insu du membre.
+      fs.rmSync(fichier(ctx, 'jeton.json'), { force: true });
+    }
+    noterErreur(ctx, 'accepter-conditions', `${r.donnees.raison || 'refus'} (HTTP ${r.statut})`);
+    ctx.ecrire(`${texteRefus(ctx, r.donnees)}\n`);
+    return 1;
+  } catch (e) {
+    noterErreur(ctx, 'accepter-conditions', e instanceof ErreurReseau ? `serveur injoignable : ${e.message}` : String(e && e.message));
+    ctx.ecrire('Le serveur de Studio 360D ne répond pas. Vérifie ta connexion à internet, puis réessaie dans une minute.\n');
+    return 1;
+  }
+}
+
 async function sante(ctx) {
   const debut = Date.now();
   try {
@@ -649,7 +706,9 @@ function cmdConditions(ctx) {
     return 1;
   }
   ctx.ecrire(`Fichier : ${versSlash(cheminConditions(ctx))}\n\n${t.trimEnd()}\n\n`);
-  ctx.ecrire('Pour les accepter, ajoute --accepte-conditions à la commande activer, à l\'étape du code.\n');
+  ctx.ecrire(lireCompte(ctx)
+    ? `Pour les accepter sur cet ordinateur déjà activé : ${commandeC360(ctx)} accepter-conditions --accepte-conditions\n`
+    : 'Pour les accepter, ajoute --accepte-conditions à la commande activer, à l\'étape du code.\n');
   return 0;
 }
 
@@ -1141,6 +1200,7 @@ function aide(ctx) {
     `    --nom : le nom de l'ordinateur envoyé au serveur, de 1 à ${NOM_MAX} caractères (par défaut, son nom d'hôte).`,
     '    Un autre nom compte comme un autre ordinateur : sert à l\'essai, avec un autre dossier --data.',
     `${c} conditions`,
+    `${c} accepter-conditions --accepte-conditions`,
     `${c} charger <plugin/skill>[/etape]`,
     `${c} run <outil> -- <arguments>`,
     '    lance un programme du studio, en Python ou en Node, puis efface sa copie.',
@@ -1210,6 +1270,8 @@ export async function principal(argv, options = {}) {
     }
     case 'activer':
       return cmdActiver(ctx, o);
+    case 'accepter-conditions':
+      return cmdAccepterConditions(ctx, o);
     case 'etat':
       return cmdEtat(ctx, o);
     case 'conditions':

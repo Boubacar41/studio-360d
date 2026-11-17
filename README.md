@@ -307,12 +307,12 @@ sous-titrer, seul le son part chez le fournisseur de transcription, jamais l'ima
 de plans de stock n'envoie que ses mots à la banque d'images. Ne joins donc rien que tu ne veux
 pas leur confier. Le serveur ne connaît que ton
 e-mail, tes ordinateurs activés et la liste des skills, références et outils que tu ouvres. Le
-détail est dans [CONDITIONS.md](CONDITIONS.md) (brouillon).
+détail est dans [CONDITIONS.md](CONDITIONS.md).
 
 **Les règles**
 
 Studio 360D est réservé aux membres actifs de la communauté, sur deux ordinateurs au plus. Les
-conditions d'utilisation sont dans [CONDITIONS.md](CONDITIONS.md) (brouillon).
+conditions d'utilisation sont dans [CONDITIONS.md](CONDITIONS.md).
 
 **Si quelque chose ne marche pas**
 
