@@ -230,6 +230,25 @@ const CONSIGNE_ACTIVATION =
   'son étape « Les conditions d\'utilisation », qui mène à l\'activation. Sinon, propose au membre ' +
   'de lancer le skill /base:demarrer.';
 
+// Les clients des autres packs partagent les données de base, pas son fichier CONDITIONS.md.
+function clientHorsSocle(ctx) {
+  const manifeste = lireJSONFichier(path.join(racinePlugin(ctx), '.claude-plugin', 'plugin.json'));
+  return typeof manifeste?.name === 'string' && manifeste.name !== PLUGIN_SOCLE;
+}
+
+const CONSIGNE_CONDITIONS_BASE =
+  'Consigne pour Claude : les conditions sont dans le pack base. Lance le skill /base:demarrer dans son propre contexte, ' +
+  'avec le client et le dossier de données que ce skill indique. Affiche les conditions, résume le texte au membre et demande son accord clair. ' +
+  'Sans cet accord, arrête-toi. Si la version affichée diffère de celle demandée par le serveur, fais mettre Studio 360D à jour, puis recommence la lecture. ' +
+  'Après son oui, suis la commande de renouvellement de ce skill, puis reprends sa demande de départ. ' +
+  'Ne demande ni nouvelle activation ni code par courriel.';
+
+function texteConditionsIntrouvables(ctx) {
+  return clientHorsSocle(ctx)
+    ? `Le texte des conditions se lit depuis /base:demarrer.\n${CONSIGNE_CONDITIONS_BASE}\n`
+    : 'Le fichier des conditions est introuvable dans Studio 360D. Ouvre une nouvelle session pour mettre Studio 360D à jour, puis réessaie.\n';
+}
+
 /**
  * Pas de clé dans le dossier de données donné. Épreuve 9 : sous PowerShell, une variable de travail `$D` a remplacé
  * `$d` (les noms ne distinguent pas la casse), `--data` a pointé vers un dossier d'images, et ce message a fait lancer
@@ -283,7 +302,7 @@ function texteRefus(ctx, donnees) {
     adhesion: 'Consigne pour Claude : transmets ce message au membre tel quel, avec le lien.',
     'non-membre': 'Consigne pour Claude : transmets ce message au membre tel quel.',
     appareil: `${CONSIGNE_ACTIVATION} La clé de cet ordinateur ne servait plus : le studio l'a effacée.`,
-    conditions: `Consigne pour Claude : affiche ${commandeC360(ctx)} conditions, résume le texte au membre et demande son accord clair. ` +
+    conditions: clientHorsSocle(ctx) ? CONSIGNE_CONDITIONS_BASE : `Consigne pour Claude : affiche ${commandeC360(ctx)} conditions, résume le texte au membre et demande son accord clair. ` +
       'Sans cet accord, arrête-toi. Si la version affichée diffère de celle demandée par le serveur, fais mettre Studio 360D à jour, puis recommence la lecture. ' +
       `Après son oui, lance ${commandeC360(ctx)} accepter-conditions --accepte-conditions, puis reprends sa demande. ` +
       'Ne demande ni nouvelle activation ni code par courriel.',
@@ -610,8 +629,8 @@ async function cmdAccepterConditions(ctx, o) {
   if (o['accepte-conditions'] !== true) {
     ctx.ecrire(
       'Il faut d\'abord lire et accepter les conditions d\'utilisation.\n' +
-      `Affiche-les avec : ${commandeC360(ctx)} conditions\n` +
-      'Après ton accord, relance avec --accepte-conditions.\n',
+      (clientHorsSocle(ctx) ? `${CONSIGNE_CONDITIONS_BASE}\n` :
+        `Affiche-les avec : ${commandeC360(ctx)} conditions\nAprès ton accord, relance avec --accepte-conditions.\n`),
     );
     return 1;
   }
@@ -626,7 +645,7 @@ async function cmdAccepterConditions(ctx, o) {
   }
   const conditions = lireVersionConditions(ctx);
   if (!conditions) {
-    ctx.ecrire('Le fichier des conditions est introuvable dans Studio 360D. Ouvre une nouvelle session pour mettre Studio 360D à jour, puis réessaie.\n');
+    ctx.ecrire(texteConditionsIntrouvables(ctx));
     return 1;
   }
   try {
@@ -702,7 +721,7 @@ function cmdConditions(ctx) {
   try {
     t = fs.readFileSync(cheminConditions(ctx), 'utf8');
   } catch {
-    ctx.ecrire('Le fichier des conditions est introuvable dans Studio 360D. Ouvre une nouvelle session pour mettre Studio 360D à jour, puis réessaie.\n');
+    ctx.ecrire(texteConditionsIntrouvables(ctx));
     return 1;
   }
   ctx.ecrire(`Fichier : ${versSlash(cheminConditions(ctx))}\n\n${t.trimEnd()}\n\n`);

@@ -1,14 +1,14 @@
 {
   "base": {
-    "version": "0.1.8",
-    "empreinte": "89ba5c35ee0f8d1759886ced78c15e30dc3b8b7ec5a9ae13abe11648859bf8cd"
+    "version": "0.1.9",
+    "empreinte": "b56a10a87a796a25bc9bf0c9b1d6a58f2784ab712c8c62867f1466eb8cdb834d"
   },
   "images": {
-    "version": "0.1.4",
-    "empreinte": "e58ccbe8e24bfa33f3929938092cdb3a44a389a50df85ece31dcab641d4a6759"
+    "version": "0.1.5",
+    "empreinte": "fe7578a7d250470b97380acfda47a2bc7ca3bb76f39fed22cce23276360d4a3c"
   },
   "videos-courtes": {
-    "version": "0.1.1",
-    "empreinte": "a1d8c47e712413d5c8f99ecbba9ebd68d5e098189582ce846aad2b51e33ccf9e"
+    "version": "0.1.2",
+    "empreinte": "95b038dba4f4783d9a64fa36e673d73343ea625c2e300e2bf3a86a5d2a245818"
   }
 }
